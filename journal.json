@@ -1,0 +1,1284 @@
+{
+ "meta": {
+  "name": "Journal 21 D Challenge",
+  "version": 2
+ },
+ "lists": {
+  "instruments": [
+   "EURUSD",
+   "GBPUSD",
+   "GBPJPY",
+   "USDJPY",
+   "XAUUSD",
+   "AUDUSD",
+   "USDCHF",
+   "NZDUSD"
+  ],
+  "sessions": [
+   "London",
+   "NY",
+   "London Close",
+   "MMM",
+   "Asian",
+   "Out of Session"
+  ],
+  "entries": [
+   "SZ EM",
+   "DZ EM",
+   "FZ EM",
+   "Aggressive"
+  ],
+  "sl": [
+   "Structural Swing",
+   "FZ Structure",
+   "SZ Structure"
+  ],
+  "tp": [
+   "SZ",
+   "DZ",
+   "Target",
+   "Structural Swing",
+   "Imbalance",
+   "Fixed",
+   "FVG",
+   "MTF DZ",
+   "Next structure"
+  ],
+  "styles": [
+   "Scalping",
+   "Intraday",
+   "Swing"
+  ]
+ },
+ "trades": [
+  {
+   "n": 1,
+   "instrument": "GBPUSD",
+   "direction": "Short",
+   "corr1": "",
+   "corr2": "",
+   "date": "2026-09-14",
+   "session": "NY",
+   "duration": "00:35",
+   "style": "Scalping",
+   "entry": "SZ EM",
+   "sl": "Structural Swing",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": 3.45,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/VgIUCHxE/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/vsbYHVzu/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/UzxYDt2z/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/UdQy3r37/",
+     "https://www.tradingview.com/x/xX6coA1f/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and watched",
+   "mistakes": "",
+   "entryEmotion": "🤪",
+   "exitEmotion": "🤯🥳",
+   "notes": "Manque de concentration et de préparation, plus scalp",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "No",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": "Continuation"
+  },
+  {
+   "n": 2,
+   "instrument": "EURUSD",
+   "direction": "Long",
+   "corr1": "",
+   "corr2": "",
+   "date": "2026-09-15",
+   "session": "London",
+   "duration": "05:50",
+   "style": "Intraday",
+   "entry": "FZ EM",
+   "sl": "FZ Structure",
+   "tp": "SZ",
+   "risk": 1,
+   "ret": 2.51,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/sPF7w4Dk/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/MoDYLvRj/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/eqL9Bgm3/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/OqWFJDKx/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "TP repositionned",
+   "mistakes": "Pre-market routine not really done",
+   "entryEmotion": "",
+   "exitEmotion": "",
+   "notes": "Beaucoup de precipitation.",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 3,
+   "instrument": "EURUSD",
+   "direction": "Short",
+   "corr1": "",
+   "corr2": "",
+   "date": "2026-09-16",
+   "session": "London",
+   "duration": "00:40",
+   "style": "Intraday",
+   "entry": "SZ EM",
+   "sl": "SZ Structure",
+   "tp": "Structural Swing",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/5SRwTzLn/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/E0Gg5jcJ/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/cDNxalcW/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/0bHIB44B/"
+    ]
+   },
+   "planFollow": "No",
+   "management": "Set and watched",
+   "mistakes": "Rushing, FOMO",
+   "entryEmotion": "🏃",
+   "exitEmotion": "😤",
+   "notes": "Equal High already noted",
+   "fomo": "Yes",
+   "bias": "Yes",
+   "poi": "No",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 4,
+   "instrument": "EURUSD",
+   "direction": "Short",
+   "corr1": "",
+   "corr2": "",
+   "date": "2026-09-16",
+   "session": "London",
+   "duration": "02:50",
+   "style": "Intraday",
+   "entry": "DZ EM",
+   "sl": "Structural Swing",
+   "tp": "Structural Swing",
+   "risk": 1,
+   "ret": 2.59,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/7wqCfglH/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/ZcalW5Zc/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/2JPMS5e8/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/2n7Fxqx3/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Forget",
+   "mistakes": "",
+   "entryEmotion": "😎",
+   "exitEmotion": "😎",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 5,
+   "instrument": "EURUSD",
+   "direction": "Short",
+   "corr1": "",
+   "corr2": "",
+   "date": "2026-09-16",
+   "session": "NY",
+   "duration": "00:44",
+   "style": "Scalping",
+   "entry": "FZ EM",
+   "sl": "Structural Swing",
+   "tp": "Structural Swing",
+   "risk": 1,
+   "ret": 2.63,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/7wqCfglH/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/ZcalW5Zc/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/HOLyVqmQ/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/15siYpwo/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Forget",
+   "mistakes": "",
+   "entryEmotion": "🤪",
+   "exitEmotion": "🤯🥳",
+   "notes": "Scalping",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "No",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 6,
+   "instrument": "EURUSD",
+   "direction": "Long",
+   "corr1": "GBPUSD",
+   "corr2": "",
+   "date": "2026-09-17",
+   "session": "London",
+   "duration": "02:35",
+   "style": "Intraday",
+   "entry": "FZ EM",
+   "sl": "FZ Structure",
+   "tp": "Structural Swing",
+   "risk": 1,
+   "ret": 4.45,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/5qNNkomo/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/k6EoLTMf/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/inchDIUX/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/hWPLexm4/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Forget",
+   "mistakes": "Buffer for Flip zone must be 3pips",
+   "entryEmotion": "🤪",
+   "exitEmotion": "🤯🥳",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "No",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 7,
+   "instrument": "GBPUSD",
+   "direction": "Long",
+   "corr1": "EURUSD",
+   "corr2": "",
+   "date": "2026-09-17",
+   "session": "London",
+   "duration": "01:35",
+   "style": "Intraday",
+   "entry": "FZ EM",
+   "sl": "FZ Structure",
+   "tp": "Structural Swing",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/OLHbbWG9/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/eS7jYGKo/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/f2Fipuih/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/oRJg40C0/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Forget",
+   "mistakes": "Didn't take news into account. Logical target already taken",
+   "entryEmotion": "🤪",
+   "exitEmotion": "😤",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 8,
+   "instrument": "EURUSD",
+   "direction": "Long",
+   "corr1": "",
+   "corr2": "",
+   "date": "2026-09-18",
+   "session": "London",
+   "duration": "02:10",
+   "style": "Intraday",
+   "entry": "FZ EM",
+   "sl": "FZ Structure",
+   "tp": "Structural Swing",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/qkIHtPAe"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/SsBGfpmj"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/ZCJ7kaZU"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/bwHRRGl9"
+    ]
+   },
+   "planFollow": "No",
+   "management": "Set and Forget",
+   "mistakes": "Didn't wait for liquidity sweep",
+   "entryEmotion": "🏃",
+   "exitEmotion": "😤",
+   "notes": "",
+   "fomo": "Yes",
+   "bias": "Yes",
+   "poi": "No",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 9,
+   "instrument": "GBPUSD",
+   "direction": "Long",
+   "corr1": "",
+   "corr2": "",
+   "date": "2026-09-21",
+   "session": "London",
+   "duration": "00:10",
+   "style": "Intraday",
+   "entry": "FZ EM",
+   "sl": "FZ Structure",
+   "tp": "SZ",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/2Gu6WEfY"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/6JafueEU"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/CVtoeGAC"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/i4RLS3mL"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "",
+   "mistakes": "False 5'MS",
+   "entryEmotion": "😎",
+   "exitEmotion": "🤯",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "No",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 10,
+   "instrument": "USDCHF",
+   "direction": "Short",
+   "corr1": "GBPUSD",
+   "corr2": "",
+   "date": "2026-09-21",
+   "session": "London",
+   "duration": "00:35",
+   "style": "Intraday",
+   "entry": "SZ EM",
+   "sl": "Structural Swing",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/UduxXvwm"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/8LHJjRS7"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/TIVZ9QaQ"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/PcuUiULR"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Forget",
+   "mistakes": "False 5'MS",
+   "entryEmotion": "😎",
+   "exitEmotion": "🤯",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "No",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 11,
+   "instrument": "EURUSD",
+   "direction": "Short",
+   "corr1": "GDPUSD",
+   "corr2": "",
+   "date": "2026-09-22",
+   "session": "London",
+   "duration": "00:27",
+   "style": "Intraday",
+   "entry": "SZ EM",
+   "sl": "Structural Swing",
+   "tp": "Structural Swing",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/krPLQOYf/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/XgJB3WYm/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/4Wes88iQ/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/gfTuK6yV/"
+    ]
+   },
+   "planFollow": "No",
+   "management": "Set and Watch",
+   "mistakes": "Didn't wait for liquidity sweep, EQH trade",
+   "entryEmotion": "🏃",
+   "exitEmotion": "😤",
+   "notes": "",
+   "fomo": "Yes",
+   "bias": "Yes",
+   "poi": "No",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 12,
+   "instrument": "EURUSD",
+   "direction": "Short",
+   "corr1": "GBPUSD",
+   "corr2": "",
+   "date": "2026-09-22",
+   "session": "MMM",
+   "duration": "04:07",
+   "style": "Intraday",
+   "entry": "SZ EM",
+   "sl": "Structural Swing",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": 3,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/krPLQOYf/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/vjA5iav5/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/abXwCv09/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/l1g8XcYV/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Watch",
+   "mistakes": "",
+   "entryEmotion": "🙂",
+   "exitEmotion": "🤯🥳",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 13,
+   "instrument": "GBPUSD",
+   "direction": "Short",
+   "corr1": "EURUSD",
+   "corr2": "",
+   "date": "2026-09-22",
+   "session": "MMM",
+   "duration": "03:12",
+   "style": "Intraday",
+   "entry": "SZ EM",
+   "sl": "Structural Swing",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": 5.43,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/TDQVEjUY/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/4VMP2yuX/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/BHxFL97v/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/oCW8DXoI/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Forget",
+   "mistakes": "",
+   "entryEmotion": "😎",
+   "exitEmotion": "🤯",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 14,
+   "instrument": "GBPUSD",
+   "direction": "Short",
+   "corr1": "",
+   "corr2": "",
+   "date": "2026-09-24",
+   "session": "London",
+   "duration": "00:46",
+   "style": "Intraday",
+   "entry": "FZ EM",
+   "sl": "FZ Structure",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/rOzVblPg/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/A76cZbdU/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/mxnll6eQ/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/2QMs8Iow/"
+    ]
+   },
+   "planFollow": "No",
+   "management": "Set and Watch",
+   "mistakes": "Too early, liquidity remaining, already saw that, FOMO",
+   "entryEmotion": "🏃",
+   "exitEmotion": "🙁",
+   "notes": "",
+   "fomo": "Yes",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 15,
+   "instrument": "GBPUSD",
+   "direction": "Short",
+   "corr1": "EURUSD",
+   "corr2": "DXY",
+   "date": "2026-09-24",
+   "session": "MMM",
+   "duration": "01:50",
+   "style": "Intraday",
+   "entry": "SZ EM",
+   "sl": "Structural Swing",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": 2.69,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/rOzVblPg/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/A76cZbdU/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/80nFEOBo/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/x4Co9bUZ/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Watch",
+   "mistakes": "",
+   "entryEmotion": "😬",
+   "exitEmotion": "🤯🥳",
+   "notes": "Good example of entry with FVG",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 16,
+   "instrument": "EURUSD",
+   "direction": "Short",
+   "corr1": "GBPUSD",
+   "corr2": "DXY",
+   "date": "2026-09-24",
+   "session": "MMM",
+   "duration": "04:55",
+   "style": "Intraday",
+   "entry": "SZ EM",
+   "sl": "Structural Swing",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": 3.63,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/XhgOaFtj/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/yVflAdCj/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/7oKlh0jN/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/zWkckedp/",
+     "https://www.tradingview.com/x/cnZPt6DW/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set ad watch",
+   "mistakes": "",
+   "entryEmotion": "😎",
+   "exitEmotion": "🤯",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 17,
+   "instrument": "GBPUSD",
+   "direction": "Long",
+   "corr1": "DXY",
+   "corr2": "EURUSD",
+   "date": "2026-09-28",
+   "session": "London",
+   "duration": "01:55",
+   "style": "Intraday",
+   "entry": "DZ EM",
+   "sl": "Structural Swing",
+   "tp": "SZ",
+   "risk": 1,
+   "ret": 3.4,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/g2HmxX17"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/UKOvyoUi"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/cga49l9L"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/zn8xCBnS"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Watch",
+   "mistakes": "",
+   "entryEmotion": "😎",
+   "exitEmotion": "😎",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 18,
+   "instrument": "EURUSD",
+   "direction": "Long",
+   "corr1": "DXY",
+   "corr2": "GBPUSD",
+   "date": "2026-09-28",
+   "session": "London",
+   "duration": "02:06",
+   "style": "Intraday",
+   "entry": "DZ EM",
+   "sl": "Structural Swing",
+   "tp": "SZ",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/tvYZKWuh"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/cUlcztHo"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/a4Nsyf9M"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/fBQvdBRm"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Watch",
+   "mistakes": "",
+   "entryEmotion": "😎",
+   "exitEmotion": "🤯",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 19,
+   "instrument": "EURUSD",
+   "direction": "Short",
+   "corr1": "GBPUSD",
+   "corr2": "",
+   "date": "2026-09-29",
+   "session": "NY",
+   "duration": "02:40",
+   "style": "Intraday",
+   "entry": "SZ EM",
+   "sl": "Structural Swing",
+   "tp": "Structural Swing",
+   "risk": 1,
+   "ret": 2,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/DjbSHeXQ/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/4W4mB43l/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/dRO1dllH/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/o2CS3Gls/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Watch",
+   "mistakes": "Moved the TP",
+   "entryEmotion": "😎",
+   "exitEmotion": "🤯🥳",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 20,
+   "instrument": "GBPUSD",
+   "direction": "Short",
+   "corr1": "EURUSD",
+   "corr2": "DXY",
+   "date": "2026-09-30",
+   "session": "London",
+   "duration": "02:25",
+   "style": "Intraday",
+   "entry": "Aggressive",
+   "sl": "Structural Swing",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/OQmt6mwF/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/XzSCoWNi/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/8T0VDkrU/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/fHHlygLr/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Watch",
+   "mistakes": "",
+   "entryEmotion": "🤪",
+   "exitEmotion": "🤯",
+   "notes": "Tried Agressive entry on live",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "No",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 21,
+   "instrument": "EURUSD",
+   "direction": "Short",
+   "corr1": "DXY",
+   "corr2": "",
+   "date": "2026-09-30",
+   "session": "London",
+   "duration": "02:20",
+   "style": "Intraday",
+   "entry": "Aggressive",
+   "sl": "Structural Swing",
+   "tp": "Structural Swing",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/y046BdKk/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/L7guiBdT/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/kXQVxANj/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/35be0Bzc/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Watch",
+   "mistakes": "",
+   "entryEmotion": "🤪",
+   "exitEmotion": "🤯",
+   "notes": "Tried Agressive entry on live",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "No",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 22,
+   "instrument": "GBPUSD",
+   "direction": "Short",
+   "corr1": "EURUSD",
+   "corr2": "",
+   "date": "2026-10-01",
+   "session": "London",
+   "duration": "00:05",
+   "style": "Intraday",
+   "entry": "Aggressive",
+   "sl": "Structural Swing",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": -1,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/UTon687N/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/sD1N1DbZ/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/41nrsmfl/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/cyBfVaLF/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Watch",
+   "mistakes": "SL too tight, must be at least 2 pips from Swing when aggresive Entry was not a candlestick pattern",
+   "entryEmotion": "🤪",
+   "exitEmotion": "😤",
+   "notes": "It plays out at the end, poor of me",
+   "fomo": "Yes",
+   "bias": "Yes",
+   "poi": "No",
+   "killzone": "Yes",
+   "sweep": "No",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  },
+  {
+   "n": 23,
+   "instrument": "EURUSD",
+   "direction": "Short",
+   "corr1": "GBPUSD",
+   "corr2": "DXY",
+   "date": "2026-10-01",
+   "session": "London",
+   "duration": "01:15",
+   "style": "Intraday",
+   "entry": "FZ EM",
+   "sl": "Structural Swing",
+   "tp": "DZ",
+   "risk": 1,
+   "ret": 3.15,
+   "screens": {
+    "htf": [
+     "https://www.tradingview.com/x/oGtGUFki/"
+    ],
+    "mtf1h": [
+     "https://www.tradingview.com/x/4SA1OpBs/"
+    ],
+    "mtf15": [
+     "https://www.tradingview.com/x/1u7Y6qFp/"
+    ],
+    "ltf": [
+     "https://www.tradingview.com/x/Ejgu0DIl/"
+    ]
+   },
+   "planFollow": "Yes",
+   "management": "Set and Watch",
+   "mistakes": "",
+   "entryEmotion": "😎",
+   "exitEmotion": "🥳",
+   "notes": "",
+   "fomo": "No",
+   "bias": "Yes",
+   "poi": "Yes",
+   "killzone": "Yes",
+   "sweep": "Yes",
+   "rr": "Yes",
+   "riskRespected": "Yes",
+   "invalidation": "Yes",
+   "setup": ""
+  }
+ ],
+ "reviews": [
+  {
+   "id": "weekly:2026-09-14",
+   "type": "weekly",
+   "start": "2026-09-14",
+   "end": "2026-09-20",
+   "answers": {
+    "q1": "ability to read the 1mn chart",
+    "q2": "FOMO, impatience. Didn't wait for LIQ SWEEP",
+    "q3": "impatience",
+    "q4": "don't rush. wait for all trigger before entry",
+    "best": "#4, good liquidity reading",
+    "worst": "#3, rushing, already spotted the liquidity but FOMO"
+   }
+  },
+  {
+   "id": "weekly:2024-05-06",
+   "type": "weekly",
+   "start": "2024-05-06",
+   "end": "2024-05-12",
+   "answers": {
+    "best": "Trade N 97. Great setup with nice result",
+    "worst": "#102 and 103, no real direction. Forcing the trades."
+   }
+  },
+  {
+   "id": "weekly:2024-05-13",
+   "type": "weekly",
+   "start": "2024-05-13",
+   "end": "2024-05-19",
+   "answers": {
+    "missed": 2,
+    "best": "No",
+    "worst": "The 3 losses are all worst trades"
+   }
+  },
+  {
+   "id": "weekly:2024-05-20",
+   "type": "weekly",
+   "start": "2024-05-20",
+   "end": "2024-05-26",
+   "answers": {
+    "missed": 2
+   }
+  },
+  {
+   "id": "weekly:2024-05-27",
+   "type": "weekly",
+   "start": "2024-05-27",
+   "end": "2024-06-02",
+   "answers": {
+    "missed": 2
+   }
+  },
+  {
+   "id": "weekly:2024-06-03",
+   "type": "weekly",
+   "start": "2024-06-03",
+   "end": "2024-06-09",
+   "answers": {
+    "missed": 1
+   }
+  },
+  {
+   "id": "monthly:2024-02-01",
+   "type": "monthly",
+   "start": "2024-02-01",
+   "end": "2024-02-29",
+   "answers": {
+    "q1": "Always wait for real LTF MS before entering. Target structural swing. 7min clearer than 6'",
+    "q3": "By the end of the month, waiting for a clear LTF MS",
+    "best": "Thursday 29, taking 3 winning trades. Waiting for full trigger",
+    "q4": "Mark up NEWS on chart + MTF Structure.",
+    "worst": "Monday 19, taking 2 similar losing trades, without real LTF MS"
+   }
+  },
+  {
+   "id": "monthly:2024-03-01",
+   "type": "monthly",
+   "start": "2024-03-01",
+   "end": "2024-03-31",
+   "answers": {
+    "q1": "Focus on day trading. 4h, 15, 5.",
+    "q3": "Ability to read MTF chart with precision.",
+    "best": "28/3. waiting for all triggers.",
+    "q4": "Only day trade. 4 15 5. Avoid swing.",
+    "worst": "11/3: taking a trade with setup outside Killzone.\n14/3: Missing a great opportunity because failed to mark up MTF with precision."
+   }
+  },
+  {
+   "id": "monthly:2024-04-01",
+   "type": "monthly",
+   "start": "2024-04-01",
+   "end": "2024-04-30",
+   "answers": {
+    "q1": "Mark UP 1h chart then 15mn. 1H is the sweet spot",
+    "q3": "Able to spot the difference between reversal and LQ sweep sometimes",
+    "q4": "Use the 1h and 15mn TF at the same time."
+   }
+  },
+  {
+   "id": "monthly:2024-05-01",
+   "type": "monthly",
+   "start": "2024-05-01",
+   "end": "2024-05-31",
+   "answers": {
+    "q1": "Failure to notice who is in contol right now => When SnD fails, it's likely a reversal",
+    "q2": "After loosing, streak, revise market structure and review it on the chart.",
+    "q3": "Nice exits with wrong direction => avoid being too greedy. be objective about what markets tells oi",
+    "q4": "Distinction between Structure, internal structure. Mark the internal on the N+1 itself to avoid confusion"
+   }
+  },
+  {
+   "id": "quarterly:2024-01-01",
+   "type": "quarterly",
+   "start": "2024-01-01",
+   "end": "2024-03-31",
+   "answers": {
+    "best": "London Manipulation.",
+    "worst": "NY Manipulation"
+   }
+  },
+  {
+   "id": "quarterly:2024-04-01",
+   "type": "quarterly",
+   "start": "2024-04-01",
+   "end": "2024-06-30",
+   "answers": {
+    "best": "London Manipulation.",
+    "worst": "NY Manipulation"
+   }
+  }
+ ],
+ "tradingPlan": {
+  "sections": [
+   {
+    "title": "Pre-market routine",
+    "items": [
+     "Economical calendar",
+     "Review trade plan",
+     "Analyse chart",
+     "Meditate"
+    ]
+   },
+   {
+    "title": "Chart processing",
+    "items": [
+     "Mark HTF 4h range + premium and discount",
+     "Mark liquidity (PDH/L, EQH/L)",
+     "Mark MTF 1H, 15mn Structure and POI",
+     "LTF when hit MTF POI",
+     "Build a narrative: continuation vs pullback vs reversal",
+     "Take profit (structure or imbalance)",
+     "Define invalidation"
+    ]
+   },
+   {
+    "title": "Entry criteria",
+    "items": [
+     "Bias alignement",
+     "High probability POI",
+     "During Killzone",
+     "LQ sweep + Market shift",
+     "Asymmetrical RR"
+    ]
+   },
+   {
+    "title": "Trade management",
+    "items": [
+     "Predifine risk before entry",
+     "Set and forget",
+     "If invalidation hits, you are done. Exit and reassess, no ONE MORE TRADE TO MAKE IT BACK"
+    ]
+   },
+   {
+    "title": "Exit criteria",
+    "items": [
+     "TP next structure or imbalance (LTF)",
+     "SL = zone + Buffer 1,5 pip pour SND, 2,5 pips pour FZ"
+    ]
+   }
+  ],
+  "notes": [
+   "Bias is a plan + invalidation not a prediction",
+   "If you can't say your bias in one sentence, you don't have one",
+   "If invalidation hits, reset. No coping, no revenge TRADE",
+   "You don't build trust in your system with affirmations. You build it with data",
+   "Conviction → confidence → compétence → consistency",
+   "If price fails to break the structure after a supposed expansion, but creates some liquidity, it's likely to reverse.",
+   "Nb: Configure Killzone indicator 11 march"
+  ]
+ }
+}
