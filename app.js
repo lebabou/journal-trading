@@ -519,116 +519,77 @@
 
 
 
+
+
+
+
+
+
   /* ---------- NEWS (calendrier économique) ---------- */
+  var _newsReady = false;
+
   function renderNews() {
-    $('#main').innerHTML =
-      '<h1>\ud83d\udcc5 Calendrier \u00e9conomique</h1>' +
-      '<div class="bar">' +
-      '<label>Filtrer par devise<select id="nw-ccy"><option value="">Toutes</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="JPY">JPY</option><option value="CHF">CHF</option><option value="AUD">AUD</option><option value="NZD">NZD</option><option value="CAD">CAD</option></select></label>' +
-      '<label>Filtrer par impact<select id="nw-imp"><option value="">Tous</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select></label>' +
-      '<button class="btn primary" id="nw-fetch">Charger la semaine en cours</button>' +
-      '<a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener" class="btn">ForexFactory \u2197</a>' +
-      '</div>' +
-      '<div id="nw-result"><p class="muted">Cliquez sur \u00ab Charger \u00bb pour afficher le calendrier.</p></div>';
+    var nc = $('#news-container');
+    // First time: build the filters + iframe inside #news-container
+    if (!_newsReady) {
+      var saved = DB.newsFilter || {};
+      var currencies = saved.currencies || ['USD','EUR','GBP','JPY','CHF','AUD','NZD','CAD'];
+      var impact = saved.impact || '3';
+      var ccyMap = {USD:'5',EUR:'22',GBP:'17',JPY:'25',CHF:'34',AUD:'72',NZD:'43',CAD:'6'};
+      var allCcy = ['USD','EUR','GBP','JPY','CHF','AUD','NZD','CAD'];
+      var ccyChecks = allCcy.map(function(c) {
+        var checked = currencies.indexOf(c) >= 0 ? ' checked' : '';
+        return '<label class="nw-chip"><input type="checkbox" class="nw-ccy" value="' + c + '"' + checked + '> ' + c + '</label>';
+      }).join('');
 
-    $('#nw-fetch').onclick = function() { fetchCalendar(); };
-    $('#nw-ccy').onchange = function() { if (window._calData) renderCalendarGrid(window._calData); };
-    $('#nw-imp').onchange = function() { if (window._calData) renderCalendarGrid(window._calData); };
+      var ccys = [];
+      currencies.forEach(function(c) { if (ccyMap[c]) ccys.push(ccyMap[c]); });
+      var iframeUrl = 'https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous' +
+        '&importance=' + impact + '&features=datepicker,timezone&countries=' + ccys.join(',') + '&calType=week&timeZone=55&lang=1';
+
+      nc.innerHTML =
+        '<div style="max-width:1400px;margin:0 auto;padding:0 18px">' +
+        '<h1>\ud83d\udcc5 Economic Calendar</h1>' +
+        '<div class="nw-filters">' +
+        '<div class="nw-filter-row"><span class="nw-label">Currencies:</span>' + ccyChecks +
+        '<button class="btn sm" id="nw-all">All</button><button class="btn sm" id="nw-none">None</button></div>' +
+        '<div class="nw-filter-row"><span class="nw-label">Impact:</span>' +
+        '<label class="nw-chip"><input type="radio" name="nw-imp" value="3"' + (impact === '3' ? ' checked' : '') + '> \ud83d\udd34 High only</label>' +
+        '<label class="nw-chip"><input type="radio" name="nw-imp" value="2,3"' + (impact === '2,3' ? ' checked' : '') + '> \ud83d\udfe0 Medium + High</label>' +
+        '<label class="nw-chip"><input type="radio" name="nw-imp" value="1,2,3"' + (impact === '1,2,3' ? ' checked' : '') + '> All</label>' +
+        '</div>' +
+        '<div class="nw-filter-row"><button class="btn primary" id="nw-apply">Apply filters</button></div>' +
+        '</div>' +
+        '<div class="cal-embed"><iframe id="nw-iframe" src="' + iframeUrl + '" width="100%" height="600" frameBorder="0" allowtransparency="true" style="border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:block;min-height:500px"></iframe></div>' +
+        '<p class="muted small" style="margin-top:8px">\ud83d\udca1 Use the calendar\'s built-in date picker and timezone selector \u2014 they are preserved when you switch tabs. Source: <a href="https://www.investing.com/economic-calendar/" target="_blank" rel="noopener">Investing.com</a></p>' +
+        '</div>';
+
+      var ccyMapRef = ccyMap;
+      nc.querySelector('#nw-apply').onclick = function() {
+        var c = []; nc.querySelectorAll('.nw-ccy').forEach(function(cb) { if (cb.checked && ccyMapRef[cb.value]) c.push(ccyMapRef[cb.value]); });
+        if (!c.length) return;
+        var imp = '3'; nc.querySelectorAll('input[name="nw-imp"]').forEach(function(r) { if (r.checked) imp = r.value; });
+        var sc = []; nc.querySelectorAll('.nw-ccy').forEach(function(cb) { if (cb.checked) sc.push(cb.value); });
+        DB.newsFilter = { currencies: sc, impact: imp };
+        var url = 'https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous' +
+          '&importance=' + imp + '&features=datepicker,timezone&countries=' + c.join(',') + '&calType=week&timeZone=55&lang=1';
+        nc.querySelector('#nw-iframe').src = url;
+      };
+      nc.querySelector('#nw-all').onclick = function() { nc.querySelectorAll('.nw-ccy').forEach(function(cb) { cb.checked = true; }); };
+      nc.querySelector('#nw-none').onclick = function() { nc.querySelectorAll('.nw-ccy').forEach(function(cb) { cb.checked = false; }); };
+      _newsReady = true;
+    }
+    // Show news container, hide main
+    nc.hidden = false;
+    $('#main').hidden = true;
   }
 
-  function fetchCalendar() {
-    var el = $('#nw-result');
-    el.innerHTML = '<p class="muted">\u23f3 Chargement du calendrier\u2026</p>';
-
-    fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var events = Array.isArray(data) ? data : (data.events || []);
-        if (!events.length) {
-          el.innerHTML = '<div class="note">Aucun \u00e9v\u00e9nement. <a href="https://www.forexfactory.com/calendar" target="_blank">ForexFactory \u2197</a></div>';
-          return;
-        }
-        window._calData = events;
-        renderCalendarGrid(events);
-      })
-      .catch(function(err) {
-        el.innerHTML = '<div class="note" style="border-color:var(--loss)"><b>Erreur :</b> ' + esc(err.message) +
-          '<br>V\u00e9rifiez votre connexion internet.<br>' +
-          '<a href="https://www.forexfactory.com/calendar" target="_blank">Ouvrir ForexFactory \u2197</a></div>';
-      });
+  function hideNews() {
+    var nc = $('#news-container');
+    if (nc) nc.hidden = true;
+    $('#main').hidden = false;
   }
 
-  function renderCalendarGrid(events) {
-    var ccyFilter = $('#nw-ccy') ? $('#nw-ccy').value : '';
-    var impFilter = $('#nw-imp') ? $('#nw-imp').value : '';
-
-    // Group events by day
-    var dayMap = {};
-    var dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    var dayNames = { 0: 'Dimanche', 1: 'Lundi', 2: 'Mardi', 3: 'Mercredi', 4: 'Jeudi', 5: 'Vendredi', 6: 'Samedi' };
-
-    events.forEach(function(ev) {
-      var ccy = ev.country || ev.currency || '';
-      var imp = (ev.impact || '').toLowerCase();
-      if (ccyFilter && ccy.toUpperCase() !== ccyFilter) return;
-      if (impFilter && imp !== impFilter.toLowerCase()) return;
-
-      var d;
-      if (ev.date) {
-        d = new Date(ev.date);
-        if (isNaN(d.getTime())) d = null;
-      }
-      var dateKey = d ? d.toISOString().slice(0, 10) : 'Unknown';
-      var dayName = d ? dayNames[d.getDay()] : '?';
-      var timeStr = d ? d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false }) : (ev.time || '');
-
-      if (!dayMap[dateKey]) dayMap[dateKey] = { label: dayName, date: dateKey, events: [] };
-      dayMap[dateKey].events.push({
-        time: timeStr,
-        currency: ccy,
-        impact: imp,
-        title: ev.title || ev.event || '',
-        forecast: ev.forecast || '',
-        previous: ev.previous || '',
-        actual: ev.actual || '',
-      });
-    });
-
-    // Sort days
-    var days = Object.values(dayMap).sort(function(a, b) { return a.date < b.date ? -1 : 1; });
-
-    var impactDot = function(imp) {
-      if (imp === 'high') return '<span style="color:#ef4444;font-size:16px" title="High impact">\u25cf</span>';
-      if (imp === 'medium') return '<span style="color:#f59e0b;font-size:16px" title="Medium impact">\u25cf</span>';
-      if (imp === 'low') return '<span style="color:#a3a3a3;font-size:14px" title="Low impact">\u25cf</span>';
-      if (imp === 'holiday') return '<span title="Holiday">\ud83c\udfd6</span>';
-      return '<span style="color:#d4d4d4">\u25cf</span>';
-    };
-
-    var html = '<div class="cal-grid">';
-    days.forEach(function(day) {
-      var isToday = day.date === new Date().toISOString().slice(0, 10);
-      html += '<div class="cal-day' + (isToday ? ' cal-today' : '') + '">';
-      html += '<div class="cal-day-header">' + esc(day.label) + '<span class="cal-date">' + esc(day.date) + '</span></div>';
-      day.events.sort(function(a, b) { return (a.time || '99:99') < (b.time || '99:99') ? -1 : 1; });
-      day.events.forEach(function(ev) {
-        var impClass = ev.impact === 'high' ? 'cal-high' : ev.impact === 'medium' ? 'cal-med' : '';
-        html += '<div class="cal-event ' + impClass + '">' +
-          '<div class="cal-event-head">' + impactDot(ev.impact) + ' <b>' + esc(ev.currency) + '</b> <span class="cal-time">' + esc(ev.time) + '</span></div>' +
-          '<div class="cal-event-title">' + esc(ev.title) + '</div>' +
-          '<div class="cal-event-data">';
-        if (ev.actual) html += '<span class="cal-actual">R\u00e9el: <b>' + esc(ev.actual) + '</b></span> ';
-        if (ev.forecast) html += '<span>Pr\u00e9v: ' + esc(ev.forecast) + '</span> ';
-        if (ev.previous) html += '<span>Pr\u00e9c: ' + esc(ev.previous) + '</span>';
-        html += '</div></div>';
-      });
-      if (!day.events.length) html += '<p class="muted small" style="padding:8px">Aucun \u00e9v\u00e9nement</p>';
-      html += '</div>';
-    });
-    html += '</div>';
-    html += '<p class="muted small" style="margin-top:8px">' + events.length + ' \u00e9v\u00e9nement(s) \u2014 Source : ForexFactory via nfs.faireconomy.media</p>';
-    $('#nw-result').innerHTML = html;
-  }
 
 
   /* ---------- TRADING PLAN ---------- */
@@ -890,6 +851,7 @@
 
   /* ---------- routage ---------- */
   function render() {
+    hideNews();
     $('#dbname').textContent = (DB.meta && DB.meta.name) || 'Journal de trading';
     document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.v === view));
     ({ dashboard: renderDashboard, journal: renderJournal, reviews: renderReviews, guardrails: renderGuardrails, news: renderNews, plan: renderTradingPlan, calc: renderCalculator, data: renderData }[view] || renderDashboard)();
