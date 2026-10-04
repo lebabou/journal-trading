@@ -23,6 +23,13 @@
   function banner(msg) { const b = $('#banner'); b.hidden = !msg; b.textContent = msg || ''; }
   function toast(msg, ms) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, ms || 2200); }
   var FILE_NAME = 'journal-trading.json';
+  var EMPTY_JOURNAL = {
+  meta: { name: 'Journal 21 D Challenge', version: 2 },
+  lists: { instruments: ['EURUSD','GBPUSD','GBPJPY','USDJPY','XAUUSD','AUDUSD','USDCHF','NZDUSD'], sessions: ['London','NY','London Close','MMM','Asian','Out of Session'], entries: ['SZ EM','DZ EM','FZ EM','Aggressive'], sl: ['Structural Swing','FZ Structure','SZ Structure'], tp: ['SZ','DZ','Target','Structural Swing','Imbalance','Fixed','FVG','MTF DZ','Next structure'], styles: ['Scalping','Intraday','Swing'] },
+  trades: [], reviews: [],
+  tradingPlan: { sections: [{ title: 'Pre-market routine', items: ['Economical calendar','Review trade plan','Analyse chart','Meditate'] }, { title: 'Chart processing', items: ['Mark HTF 4h range + premium and discount','Mark liquidity (PDH/L, EQH/L)','Mark MTF 1H, 15mn Structure and POI','LTF when hit MTF POI','Build a narrative: continuation vs pullback vs reversal','Take profit (structure or imbalance)','Define invalidation'] }, { title: 'Entry criteria', items: ['Bias alignement','High probability POI','During Killzone','LQ sweep + Market shift','Asymmetrical RR'] }, { title: 'Trade management', items: ['Predifine risk before entry','Set and forget','If invalidation hits, you are done. Exit and reassess, no ONE MORE TRADE TO MAKE IT BACK'] }, { title: 'Exit criteria', items: ['TP next structure or imbalance (LTF)','SL = zone + Buffer 1,5 pip pour SND, 2,5 pips pour FZ'] }], notes: ['Bias is a plan + invalidation not a prediction','If you can\'t say your bias in one sentence, you don\'t have one','If invalidation hits, reset. No coping, no revenge TRADE','You don\'t build trust in your system with affirmations. You build it with data','Conviction \u2192 confidence \u2192 comp\u00e9tence \u2192 consistency'] },
+  calculator: { accountSize: 5000, riskPercent: 0.06, instruments: [{ name: 'NAS', pipValue: 20 },{ name: 'US500', pipValue: 1 },{ name: 'EURUSD', pipValue: 10 },{ name: 'GBPUSD', pipValue: 10 },{ name: 'XAUUSD', pipValue: 1 },{ name: 'US30', pipValue: 10 }] }
+};
   async function load() {
     // Initialize Google Drive connection
     Drive.init({
@@ -37,7 +44,7 @@
     try {
       // 1. Try Google Drive if signed in
       if (Drive.isSignedIn()) {
-        var result = await Drive.load(null);
+        var result = await Drive.load(EMPTY_JOURNAL);
         if (result.db) {
           DB = result.db;
           DB.lists = DB.lists || {}; DB.reviews = DB.reviews || []; DB.trades = DB.trades || [];
