@@ -38,6 +38,7 @@
     Object.keys(E.lists || {}).forEach(function(k) { if (!db.lists[k] || !db.lists[k].length) db.lists[k] = E.lists[k]; });
     if (!db.tradingPlan || !db.tradingPlan.sections || !db.tradingPlan.sections.length) db.tradingPlan = E.tradingPlan;
     if (!db.calculator) db.calculator = E.calculator;
+    if (!db.tradingPlans && db.tradingPlan) { /* migrated lazily by plansData() */ }
     if (!db.notebook) db.notebook = E.notebook;
     if (!db.notebook.folders || !db.notebook.folders.length) db.notebook.folders = E.notebook.folders;
     if (!db.notebook.notes) db.notebook.notes = E.notebook.notes;
@@ -773,7 +774,7 @@
         <button class="btn" id="m-edit">Modifier</button><button class="btn danger" id="m-del">Supprimer</button><button class="btn" id="m-close">Fermer</button></div>
       <div class="shots">${SLOTS.map(([k, l]) => shotPanel(t, k, l)).join('')}</div>
       <div class="details">${D('Session', t.session)}${D('Durée', t.duration)}${D('Style', t.style)}${D('Entrée', t.entry)}${D('SL', t.sl)}${D('TP', t.tp)}${D('Risque', t.risk + ' R')}${D('Return', sgn(t.ret) + ' R')}${D('R cumulé', num(t._cum))}${D('Drawdown', num(t._dd))}
-        ${D('Corrélation 1', t.corr1)}${D('Corrélation 2', t.corr2)}${D('Plan-follow', t.planFollow)}${D('FOMO / impulsion', t.fomo)}${D('Gestion', t.management)}${D('Setup', t.setup)}${D('Émotion entrée', t.entryEmotion)}${D('Émotion sortie', t.exitEmotion)}
+        ${D('Corrélation 1', t.corr1)}${D('Corrélation 2', t.corr2)}${D('Plan suivi', t.planName || (planById(t.planId) || {}).name || '')}${D('Plan-follow', t.planFollow)}${D('FOMO / impulsion', t.fomo)}${D('Gestion', t.management)}${D('Setup', t.setup)}${D('Émotion entrée', t.entryEmotion)}${D('Émotion sortie', t.exitEmotion)}
         ${D('Bias alignment', t.bias)}${D('POI haute proba', t.poi)}${D('Killzone', t.killzone)}${D('Sweep + Market Shift', t.sweep)}${D('RR asymétrique', t.rr)}${D('Score setup', t._score === null ? '' : t._score + '/5')}${D('Risque respecté', t.riskRespected)}${D('Invalidation respectée', t.invalidation)}${D('Score discipline', t._disc === null ? '' : t._disc + '/3')}</div>
       ${block('Erreurs', t.mistakes)}${block('Notes', t.notes)}`);
     bindShots($('#modal'), t);
@@ -809,6 +810,8 @@
         ${inp('f-corr1', 'Corrélation 1', t.corr1)}${inp('f-corr2', 'Corrélation 2', t.corr2)}
         ${inp('f-setup', 'Setup', t.setup)}
         <fieldset><legend>Process</legend><div class="row">
+          ${(() => { const pd = plansData(); const cur = t.planId || pd.activeId;
+            return `<label>Plan suivi<select id="f-planId">${pd.plans.map(p => `<option value="${esc(p.id)}"${p.id === cur ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>`; })()}
           ${YN('f-planFollow', 'Plan-follow', t.planFollow)}${YN('f-riskRespected', 'Risque respecté', t.riskRespected)}${YN('f-invalidation', 'Invalidation respectée', t.invalidation)}${YN('f-fomo', 'FOMO / impulsion', t.fomo)}
           <label>Gestion du trade<input id="f-management" list="dl-mgmt" value="${esc(t.management)}"></label>${inp('f-entryEmotion', 'Émotion entrée', t.entryEmotion)}${inp('f-exitEmotion', 'Émotion sortie', t.exitEmotion)}</div></fieldset>
         <fieldset><legend>Critères du setup (grade automatique)</legend><div class="row">
@@ -833,6 +836,7 @@
         n: t.n, instrument: v('instrument'), direction: v('direction'), corr1: v('corr1'), corr2: v('corr2'), date: v('date'), session: v('session'), duration: v('duration'),
         style: v('style'), entry: v('entry'), sl: v('sl'), tp: v('tp'), risk: v('risk') === '' ? 1 : +v('risk'), ret: ret === '' ? null : +ret,
         screens: Object.fromEntries(SLOTS.map(([k]) => [k, urls(k)])),
+        planId: v('planId'), planName: (planById(v('planId')) || {}).name || '',
         planFollow: v('planFollow'), management: v('management'), mistakes: v('mistakes'), entryEmotion: v('entryEmotion'), exitEmotion: v('exitEmotion'), notes: v('notes'), fomo: v('fomo'),
         bias: v('bias'), poi: v('poi'), killzone: v('killzone'), sweep: v('sweep'), rr: v('rr'), riskRespected: v('riskRespected'), invalidation: v('invalidation'), setup: v('setup'),
       };
@@ -967,9 +971,72 @@
 
 
   /* ---------- TRADING PLAN ---------- */
+  function plansData() {
+    if (!DB) return { plans: [], activeId: null };
+    // migrate the old single plan into the new list
+    if (!DB.tradingPlans) {
+      var first = (DB.tradingPlan && DB.tradingPlan.sections && DB.tradingPlan.sections.length)
+        ? DB.tradingPlan : EMPTY_JOURNAL.tradingPlan;
+      DB.tradingPlans = [{ id: 'p' + Date.now(), name: 'Plan principal',
+                           sections: JSON.parse(JSON.stringify(first.sections || [])),
+                           notes: JSON.parse(JSON.stringify(first.notes || [])) }];
+    }
+    if (!DB.tradingPlans.length) {
+      DB.tradingPlans = [{ id: 'p' + Date.now(), name: 'Plan principal',
+                           sections: JSON.parse(JSON.stringify(EMPTY_JOURNAL.tradingPlan.sections)),
+                           notes: JSON.parse(JSON.stringify(EMPTY_JOURNAL.tradingPlan.notes)) }];
+    }
+    if (!DB.activePlanId || !DB.tradingPlans.filter(function(p) { return p.id === DB.activePlanId; }).length) {
+      DB.activePlanId = DB.tradingPlans[0].id;
+    }
+    return { plans: DB.tradingPlans, activeId: DB.activePlanId };
+  }
+  function activePlan() {
+    var d = plansData();
+    return d.plans.filter(function(p) { return p.id === d.activeId; })[0] || d.plans[0];
+  }
+  function planById(id) {
+    var d = plansData();
+    return d.plans.filter(function(p) { return p.id === id; })[0] || null;
+  }
+  function planNewId() { return 'p' + Date.now() + Math.random().toString(36).slice(2, 5); }
+  /* --- presse-papier de plans, partagé entre les deux journaux --- */
+  var TP_CLIP = 'tp_clipboard_v1';
+  function tpClipPeek() {
+    try {
+      var o = JSON.parse(localStorage.getItem(TP_CLIP) || 'null');
+      return (o && o.plan && o.plan.name) ? o : null;
+    } catch (e) { return null; }
+  }
+  function tpCopyToClip(plan) {
+    var copy = JSON.parse(JSON.stringify(plan));
+    delete copy.id;
+    try {
+      localStorage.setItem(TP_CLIP, JSON.stringify({ from: (DB.meta && DB.meta.name) || 'Journal', plan: copy }));
+    } catch (e) { alert('Plan trop volumineux pour \u00eatre copi\u00e9.'); return false; }
+    toast('Plan \u00ab ' + copy.name + ' \u00bb copi\u00e9 \u2014 collez-le dans l\'autre journal', 6000);
+    return true;
+  }
+
   function renderTradingPlan() {
-    var plan = DB.tradingPlan || { sections: [], notes: [] };
+    var pd = plansData();
+    var plan = activePlan();
     var editing = renderTradingPlan._editing || false;
+    var clip = tpClipPeek();
+    var planBar =
+      '<div class="tp-bar">' +
+      '<label>Plan actif <select id="tp-select">' +
+      pd.plans.map(function(p) {
+        return '<option value="' + p.id + '"' + (p.id === pd.activeId ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      }).join('') + '</select></label>' +
+      '<button class="btn sm" id="tp-new">+ Nouveau</button>' +
+      '<button class="btn sm" id="tp-rename">\u270f\ufe0f Renommer</button>' +
+      '<button class="btn sm" id="tp-dup">\u29c9 Dupliquer</button>' +
+      '<button class="btn sm" id="tp-copy">\ud83d\udccb Copier</button>' +
+      (clip ? '<button class="btn sm" id="tp-paste">\ud83d\udccb Coller \u00ab ' + esc(clip.plan.name.slice(0, 22)) + ' \u00bb</button>' : '') +
+      (pd.plans.length > 1 ? '<button class="btn sm danger" id="tp-del">\ud83d\uddd1</button>' : '') +
+      '<span class="muted small">' + pd.plans.length + ' plan(s)</span>' +
+      '</div>';
 
     if (editing) {
       var sectionsHTML = '';
@@ -995,7 +1062,7 @@
       });
 
       $('#main').innerHTML =
-        '<h1>\ud83d\udcdd Trading Plan <span class="muted small">(\u00e9dition)</span></h1>' +
+        '<h1>\ud83d\udcdd Trading Plan <span class="muted small">(\u00e9dition)</span></h1>' + planBar +
         '<div class="card"><div class="form">' + sectionsHTML +
         '<button class="btn" id="tp-add-sec">+ Ajouter une section</button>' +
         '</div></div>' +
@@ -1005,6 +1072,73 @@
         '<div class="actions" style="margin-top:14px"><button class="btn" id="tp-cancel">Annuler</button><button class="btn primary" id="tp-save">Enregistrer le plan</button></div>';
 
       // Event handlers
+
+    // --- plan management ---
+    var tpSel = $('#tp-select');
+    if (tpSel) tpSel.onchange = async function() {
+      DB.activePlanId = tpSel.value;
+      DB.tradingPlan = activePlan();
+      renderTradingPlan._editing = false;
+      await save('Plan actif : ' + activePlan().name);
+      renderTradingPlan();
+    };
+    var tpNew = $('#tp-new');
+    if (tpNew) tpNew.onclick = async function() {
+      var name = prompt('Nom du nouveau plan :', 'Plan ' + (plansData().plans.length + 1));
+      if (!name || !name.trim()) return;
+      var p = { id: planNewId(), name: name.trim(), sections: [{ title: 'Nouvelle section', items: [''] }], notes: [] };
+      DB.tradingPlans.push(p);
+      DB.activePlanId = p.id; DB.tradingPlan = p;
+      renderTradingPlan._editing = true;
+      await save('Plan cr\u00e9\u00e9');
+      renderTradingPlan();
+    };
+    var tpRen = $('#tp-rename');
+    if (tpRen) tpRen.onclick = async function() {
+      var name = prompt('Nouveau nom du plan :', plan.name);
+      if (!name || !name.trim()) return;
+      plan.name = name.trim();
+      await save('Plan renomm\u00e9');
+      renderTradingPlan();
+    };
+    var tpDup = $('#tp-dup');
+    if (tpDup) tpDup.onclick = async function() {
+      var c = JSON.parse(JSON.stringify(plan));
+      c.id = planNewId(); c.name = plan.name + ' (copie)';
+      DB.tradingPlans.push(c);
+      DB.activePlanId = c.id; DB.tradingPlan = c;
+      await save('Plan dupliqu\u00e9');
+      renderTradingPlan();
+    };
+    var tpCopy = $('#tp-copy');
+    if (tpCopy) tpCopy.onclick = function() { tpCopyToClip(plan); renderTradingPlan(); };
+    var tpPaste = $('#tp-paste');
+    if (tpPaste) tpPaste.onclick = async function() {
+      var c = tpClipPeek();
+      if (!c) return;
+      var p = JSON.parse(JSON.stringify(c.plan));
+      p.id = planNewId();
+      if (plansData().plans.filter(function(x) { return x.name === p.name; }).length) p.name = p.name + ' (copie)';
+      DB.tradingPlans.push(p);
+      DB.activePlanId = p.id; DB.tradingPlan = p;
+      renderTradingPlan._editing = false;
+      await save('Plan coll\u00e9 depuis ' + (c.from || 'l\'autre journal'));
+      renderTradingPlan();
+    };
+    var tpDel = $('#tp-del');
+    if (tpDel) tpDel.onclick = async function() {
+      if (plansData().plans.length < 2) return;
+      var used = ((DB.trades) || []).filter(function(t) { return t.planId === plan.id; }).length;
+      if (!confirm('Supprimer le plan \u00ab ' + plan.name + ' \u00bb ?' +
+        (used ? '\n\n' + used + ' trade(s) y font r\u00e9f\u00e9rence ; ils garderont le nom du plan.' : ''))) return;
+      DB.tradingPlans = DB.tradingPlans.filter(function(x) { return x.id !== plan.id; });
+      DB.activePlanId = DB.tradingPlans[0].id;
+      DB.tradingPlan = activePlan();
+      renderTradingPlan._editing = false;
+      await save('Plan supprim\u00e9');
+      renderTradingPlan();
+    };
+
       $('#tp-save').onclick = async function() {
         var newPlan = { sections: [], notes: [] };
         document.querySelectorAll('.tp-title').forEach(function(el) {
@@ -1020,30 +1154,33 @@
         document.querySelectorAll('.tp-note').forEach(function(el) {
           var v = el.value.trim(); if (v) newPlan.notes.push(v);
         });
-        DB.tradingPlan = newPlan;
+        newPlan.id = plan.id; newPlan.name = plan.name;
+        var idx = pd.plans.map(function(p) { return p.id; }).indexOf(plan.id);
+        if (idx >= 0) DB.tradingPlans[idx] = newPlan;
+        DB.tradingPlan = newPlan; // keep the checklist and older code working
         renderTradingPlan._editing = false;
-        if (await save('Trading plan enregistr\u00e9')) renderTradingPlan();
+        if (await save('Plan \u00ab ' + newPlan.name + ' \u00bb enregistr\u00e9')) renderTradingPlan(); else renderTradingPlan();
       };
       $('#tp-cancel').onclick = function() { renderTradingPlan._editing = false; renderTradingPlan(); };
-      $('#tp-add-sec').onclick = function() { plan.sections.push({ title: 'Nouvelle section', items: [''] }); DB.tradingPlan = plan; renderTradingPlan(); };
-      $('#tp-add-note').onclick = function() { plan.notes.push(''); DB.tradingPlan = plan; renderTradingPlan(); };
+      $('#tp-add-sec').onclick = function() { plan.sections.push({ title: 'Nouvelle section', items: [''] }); renderTradingPlan(); };
+      $('#tp-add-note').onclick = function() { plan.notes.push(''); renderTradingPlan(); };
       document.querySelectorAll('.tp-add-item').forEach(function(btn) {
-        btn.onclick = function() { plan.sections[+btn.dataset.si].items.push(''); DB.tradingPlan = plan; renderTradingPlan(); };
+        btn.onclick = function() { plan.sections[+btn.dataset.si].items.push(''); renderTradingPlan(); };
       });
       document.querySelectorAll('.tp-del-sec').forEach(function(btn) {
-        btn.onclick = function() { plan.sections.splice(+btn.dataset.si, 1); DB.tradingPlan = plan; renderTradingPlan(); };
+        btn.onclick = function() { plan.sections.splice(+btn.dataset.si, 1); renderTradingPlan(); };
       });
       document.querySelectorAll('.tp-del-item').forEach(function(btn) {
-        btn.onclick = function() { plan.sections[+btn.dataset.si].items.splice(+btn.dataset.ii, 1); DB.tradingPlan = plan; renderTradingPlan(); };
+        btn.onclick = function() { plan.sections[+btn.dataset.si].items.splice(+btn.dataset.ii, 1); renderTradingPlan(); };
       });
       document.querySelectorAll('.tp-del-note').forEach(function(btn) {
-        btn.onclick = function() { plan.notes.splice(+btn.dataset.ni, 1); DB.tradingPlan = plan; renderTradingPlan(); };
+        btn.onclick = function() { plan.notes.splice(+btn.dataset.ni, 1); renderTradingPlan(); };
       });
       return;
     }
 
     // Read-only view
-    var html = '<h1>\ud83d\udcdd Trading Plan</h1>';
+    var html = '<h1>\ud83d\udcdd Trading Plan \u2014 ' + esc(plan.name) + '</h1>' + planBar;
     html += '<div class="actions" style="margin-bottom:14px"><button class="btn primary" id="tp-edit">Modifier le plan</button></div>';
     plan.sections.forEach(function(sec) {
       html += '<div class="card" style="margin-bottom:12px"><h2 style="margin-top:0">' + esc(sec.title) + '</h2><ul style="margin:0;padding-left:20px">';
@@ -1060,6 +1197,73 @@
       html += '</ul></div>';
     }
     $('#main').innerHTML = html;
+
+    // --- plan management ---
+    var tpSel = $('#tp-select');
+    if (tpSel) tpSel.onchange = async function() {
+      DB.activePlanId = tpSel.value;
+      DB.tradingPlan = activePlan();
+      renderTradingPlan._editing = false;
+      await save('Plan actif : ' + activePlan().name);
+      renderTradingPlan();
+    };
+    var tpNew = $('#tp-new');
+    if (tpNew) tpNew.onclick = async function() {
+      var name = prompt('Nom du nouveau plan :', 'Plan ' + (plansData().plans.length + 1));
+      if (!name || !name.trim()) return;
+      var p = { id: planNewId(), name: name.trim(), sections: [{ title: 'Nouvelle section', items: [''] }], notes: [] };
+      DB.tradingPlans.push(p);
+      DB.activePlanId = p.id; DB.tradingPlan = p;
+      renderTradingPlan._editing = true;
+      await save('Plan cr\u00e9\u00e9');
+      renderTradingPlan();
+    };
+    var tpRen = $('#tp-rename');
+    if (tpRen) tpRen.onclick = async function() {
+      var name = prompt('Nouveau nom du plan :', plan.name);
+      if (!name || !name.trim()) return;
+      plan.name = name.trim();
+      await save('Plan renomm\u00e9');
+      renderTradingPlan();
+    };
+    var tpDup = $('#tp-dup');
+    if (tpDup) tpDup.onclick = async function() {
+      var c = JSON.parse(JSON.stringify(plan));
+      c.id = planNewId(); c.name = plan.name + ' (copie)';
+      DB.tradingPlans.push(c);
+      DB.activePlanId = c.id; DB.tradingPlan = c;
+      await save('Plan dupliqu\u00e9');
+      renderTradingPlan();
+    };
+    var tpCopy = $('#tp-copy');
+    if (tpCopy) tpCopy.onclick = function() { tpCopyToClip(plan); renderTradingPlan(); };
+    var tpPaste = $('#tp-paste');
+    if (tpPaste) tpPaste.onclick = async function() {
+      var c = tpClipPeek();
+      if (!c) return;
+      var p = JSON.parse(JSON.stringify(c.plan));
+      p.id = planNewId();
+      if (plansData().plans.filter(function(x) { return x.name === p.name; }).length) p.name = p.name + ' (copie)';
+      DB.tradingPlans.push(p);
+      DB.activePlanId = p.id; DB.tradingPlan = p;
+      renderTradingPlan._editing = false;
+      await save('Plan coll\u00e9 depuis ' + (c.from || 'l\'autre journal'));
+      renderTradingPlan();
+    };
+    var tpDel = $('#tp-del');
+    if (tpDel) tpDel.onclick = async function() {
+      if (plansData().plans.length < 2) return;
+      var used = ((DB.trades) || []).filter(function(t) { return t.planId === plan.id; }).length;
+      if (!confirm('Supprimer le plan \u00ab ' + plan.name + ' \u00bb ?' +
+        (used ? '\n\n' + used + ' trade(s) y font r\u00e9f\u00e9rence ; ils garderont le nom du plan.' : ''))) return;
+      DB.tradingPlans = DB.tradingPlans.filter(function(x) { return x.id !== plan.id; });
+      DB.activePlanId = DB.tradingPlans[0].id;
+      DB.tradingPlan = activePlan();
+      renderTradingPlan._editing = false;
+      await save('Plan supprim\u00e9');
+      renderTradingPlan();
+    };
+
     $('#tp-edit').onclick = function() { renderTradingPlan._editing = true; renderTradingPlan(); };
   }
 
