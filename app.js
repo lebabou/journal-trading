@@ -806,9 +806,9 @@
         <button class="btn" id="m-edit">Modifier</button><button class="btn danger" id="m-del">Supprimer</button><button class="btn" id="m-close">Fermer</button></div>
       <div class="shots">${SLOTS.map(([k, l]) => shotPanel(t, k, l)).join('')}</div>
       <div class="details">${D('Session', t.session)}${D('Durée', t.duration)}${D('Style', t.style)}${D('Entrée', t.entry)}${D('SL', t.sl)}${D('TP', t.tp)}${D('Risque', t.risk + ' R')}${D('Return', sgn(t.ret) + ' R')}${D('R cumulé', num(t._cum))}${D('Drawdown', num(t._dd))}
-        ${D('Corrélation 1', t.corr1)}${D('Corrélation 2', t.corr2)}${D('Plan suivi', t.planName || (planById(t.planId) || {}).name || '')}${D('Plan-follow', t.planFollow)}${D('FOMO / impulsion', t.fomo)}${D('Gestion', t.management)}${D('Setup', t.setup)}${D('Émotion entrée', t.entryEmotion)}${D('Émotion sortie', t.exitEmotion)}
+        ${D('Corrélation 1', t.corr1)}${D('Corrélation 2', t.corr2)}${D('Plan suivi', t.planName || (planById(t.planId) || {}).name || '')}${D('Overtrade', t.overtrade)}${D('Revenge trade', t.revenge)}${D('Guardrails broken', grBrokenNames(t.guardrailsBroken))}${D('Plan-follow', t.planFollow)}${D('FOMO / impulsion', t.fomo)}${D('Gestion', t.management)}${D('Setup', t.setup)}${D('Émotion entrée', t.entryEmotion)}${D('Émotion sortie', t.exitEmotion)}
         ${D('Bias alignment', t.bias)}${D('POI haute proba', t.poi)}${D('Killzone', t.killzone)}${D('Sweep + Market Shift', t.sweep)}${D('RR asymétrique', t.rr)}${D('Score setup', t._score === null ? '' : t._score + '/5')}${D('Risque respecté', t.riskRespected)}${D('Invalidation respectée', t.invalidation)}${D('Score discipline', t._disc === null ? '' : t._disc + '/3')}</div>
-      ${block('Erreurs', t.mistakes)}${block('Notes', t.notes)}`);
+      ${block('Erreurs', t.mistakes)}${block('Notes', t.notes)}${block('Amélioration pour demain', t.improvement)}`);
     bindShots($('#modal'), t);
     $('#m-close').onclick = closeModal; $('#m-edit').onclick = () => editTrade(t.n);
     $('#m-del').onclick = async () => { if (confirm(`Supprimer définitivement le trade #${t.n} ?\n(une copie de sauvegarde du jour est conservée dans backups/)`)) { DB.trades = DB.trades.filter(x => x.n !== t.n); if (await save('Trade supprimé')) { closeModal(); render(); } } };
@@ -818,6 +818,48 @@
   }
 
   /* ---------- formulaire (ajout / édition) ---------- */
+  /* --- guardrail rules a trade can break (built from the current Guardrails settings) --- */
+  var GR_BREAK_NAMES = { maxTrades: 'Max trades / jour', maxLoss: 'Max loss / jour', killzone: 'Hors killzone' };
+  function grBreakItems() {
+    var g = getGuardrails(), kz = g.killzones || {};
+    var act = (kz.sessions || []).filter(function(s) { return s.active; }).map(function(s) { return s.name; });
+    var items = [
+      { key: 'maxTrades', label: 'Max trades / jour (' + g.maxTrades + ')' },
+      { key: 'maxLoss', label: 'Max loss / jour (' + sgn(g.maxLossR) + ' R)' }
+    ];
+    if (kz.enabled !== false && act.length) items.push({ key: 'killzone', label: 'Hors killzone (' + act.join(', ') + ')' });
+    return items;
+  }
+  function grBrokenNames(list) {
+    return (list || []).map(function(k) { return GR_BREAK_NAMES[k] || k; }).join(', ');
+  }
+  function grBrokenField(t) {
+    var sel = t.guardrailsBroken || [];
+    var items = grBreakItems();
+    // keep a rule ticked on an old trade even if it is no longer in the settings
+    sel.forEach(function(k) { if (!items.some(function(i) { return i.key === k; })) items.push({ key: k, label: GR_BREAK_NAMES[k] || k }); });
+    return '<div class="ms-field"><span class="ms-title">Guardrails broken</span>' +
+      '<details class="ms" id="f-grBroken"><summary>' + esc(sel.length ? grBrokenNames(sel) : 'Aucun') + '</summary><div class="ms-list">' +
+      items.map(function(i) {
+        return '<label class="ms-opt"><input type="checkbox" value="' + esc(i.key) + '"' + (sel.indexOf(i.key) >= 0 ? ' checked' : '') + '> ' + esc(i.label) + '</label>';
+      }).join('') + '</div></details></div>';
+  }
+  function grBrokenWire() {
+    var box = document.getElementById('f-grBroken');
+    if (!box) return;
+    var sum = box.querySelector('summary');
+    box.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+      cb.onchange = function() {
+        var keys = Array.prototype.map.call(box.querySelectorAll('input:checked'), function(x) { return x.value; });
+        sum.textContent = keys.length ? grBrokenNames(keys) : 'Aucun';
+      };
+    });
+  }
+  function grBrokenValue() {
+    var box = document.getElementById('f-grBroken');
+    return box ? Array.prototype.map.call(box.querySelectorAll('input:checked'), function(x) { return x.value; }) : [];
+  }
+
   const YN = (id, label, v) => `<label>${label}<select id="${id}">${opts(['Yes', 'No'], v, '—')}</select></label>`;
   function editTrade(n) {
     const isNew = n === null;
@@ -844,7 +886,7 @@
         <fieldset><legend>Process</legend><div class="row">
           ${(() => { const pd = plansData(); const cur = t.planId || pd.activeId;
             return `<label>Plan suivi<select id="f-planId">${pd.plans.map(p => `<option value="${esc(p.id)}"${p.id === cur ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>`; })()}
-          ${YN('f-planFollow', 'Plan-follow', t.planFollow)}${YN('f-riskRespected', 'Risque respecté', t.riskRespected)}${YN('f-invalidation', 'Invalidation respectée', t.invalidation)}${YN('f-fomo', 'FOMO / impulsion', t.fomo)}
+          ${YN('f-planFollow', 'Plan-follow', t.planFollow)}${YN('f-riskRespected', 'Risque respecté', t.riskRespected)}${YN('f-invalidation', 'Invalidation respectée', t.invalidation)}${YN('f-fomo', 'FOMO / impulsion', t.fomo)}${YN('f-overtrade', 'Overtrade', t.overtrade)}${YN('f-revenge', 'Revenge trade', t.revenge)}${grBrokenField(t)}
           <label>Gestion du trade<input id="f-management" list="dl-mgmt" value="${esc(t.management)}"></label>${inp('f-entryEmotion', 'Émotion entrée', t.entryEmotion)}${inp('f-exitEmotion', 'Émotion sortie', t.exitEmotion)}</div></fieldset>
         <fieldset><legend>Critères du setup (grade automatique)</legend><div class="row">
           ${YN('f-bias', 'Bias alignment', t.bias)}${YN('f-poi', 'POI haute probabilité', t.poi)}${YN('f-killzone', 'Killzone respectée', t.killzone)}${YN('f-sweep', 'Liquidity sweep + Market Shift', t.sweep)}${YN('f-rr', 'RR asymétrique', t.rr)}</div></fieldset>
@@ -852,10 +894,12 @@
           ${SLOTS.map(([k, l]) => `<label>${l}<textarea id="f-s-${k}" placeholder="https://www.tradingview.com/x/…">${esc(((t.screens || {})[k] || []).join('\n'))}</textarea></label>`).join('')}</div></fieldset>
         <label class="wide">Erreurs<textarea id="f-mistakes">${esc(t.mistakes)}</textarea></label>
         <label class="wide">Notes<textarea id="f-notes">${esc(t.notes)}</textarea></label>
+        <label class="wide">Amélioration pour demain<textarea id="f-improvement" placeholder="Une chose précise à faire mieux demain…">${esc(t.improvement)}</textarea></label>
       </div>
       ${dl('dl-inst', uniq('instruments'))}${dl('dl-sess', uniq('sessions'))}${dl('dl-style', uniq('styles'))}${dl('dl-entry', uniq('entries'))}${dl('dl-sl', uniq('sl'))}${dl('dl-tp', uniq('tp'))}${dl('dl-mgmt', mgmt)}
       <div class="actions"><button class="btn" id="f-cancel">Annuler</button><button class="btn primary" id="f-save">Enregistrer</button></div>`);
     $('#f-cancel').onclick = () => isNew ? closeModal() : openTrade(t.n);
+    grBrokenWire();
     $('#f-save').onclick = async () => {
       const v = id => $('#f-' + id).value.trim();
       if (!v('date')) return alert('La date est obligatoire.');
@@ -869,6 +913,7 @@
         style: v('style'), entry: v('entry'), sl: v('sl'), tp: v('tp'), risk: v('risk') === '' ? 1 : +v('risk'), ret: ret === '' ? null : +ret,
         screens: Object.fromEntries(SLOTS.map(([k]) => [k, urls(k)])),
         planId: v('planId'), planName: (planById(v('planId')) || {}).name || '',
+        overtrade: v('overtrade'), revenge: v('revenge'), guardrailsBroken: grBrokenValue(), improvement: v('improvement'),
         planFollow: v('planFollow'), management: v('management'), mistakes: v('mistakes'), entryEmotion: v('entryEmotion'), exitEmotion: v('exitEmotion'), notes: v('notes'), fomo: v('fomo'),
         bias: v('bias'), poi: v('poi'), killzone: v('killzone'), sweep: v('sweep'), rr: v('rr'), riskRespected: v('riskRespected'), invalidation: v('invalidation'), setup: v('setup'),
       };
@@ -1965,8 +2010,8 @@
   /* ---------- DONNÉES ---------- */
   function download(name, text, mime) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
   function toCSV() {
-    const cols = ['n', 'date', 'instrument', 'direction', 'session', 'duration', 'style', 'entry', 'sl', 'tp', 'risk', 'ret', '_result', '_cum', '_dd', '_grade', 'planFollow', 'fomo', 'management', 'mistakes', 'notes', 'setup', 'corr1', 'corr2', 'bias', 'poi', 'killzone', 'sweep', 'rr', 'riskRespected', 'invalidation', 'entryEmotion', 'exitEmotion'];
-    const q = v => { v = v === null || v === undefined ? '' : String(v); return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const cols = ['n', 'date', 'instrument', 'direction', 'session', 'duration', 'style', 'entry', 'sl', 'tp', 'risk', 'ret', '_result', '_cum', '_dd', '_grade', 'planFollow', 'fomo', 'overtrade', 'revenge', 'guardrailsBroken', 'management', 'mistakes', 'notes', 'improvement', 'setup', 'corr1', 'corr2', 'bias', 'poi', 'killzone', 'sweep', 'rr', 'riskRespected', 'invalidation', 'entryEmotion', 'exitEmotion'];
+    const q = v => { v = v === null || v === undefined ? '' : Array.isArray(v) ? v.join(' | ') : String(v); return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     const head = [...cols, ...SLOTS.map(([, l]) => 'screens_' + l)];
     return '\ufeff' + [head.join(','), ...enriched().map(t => [...cols.map(c => q(t[c])), ...SLOTS.map(([k]) => q(((t.screens || {})[k] || []).join(' ')))].join(','))].join('\n');
   }
