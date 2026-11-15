@@ -103,7 +103,7 @@
       DB = Drive.getCached() || EMPTY_JOURNAL;
       mergeDefaults(DB);
     }
-    updateAuthUI(); updateStatusBar(); initNewsAlerts(); requestNotifPermission();
+    updateAuthUI(); updateStatusBar(); initNewsAlerts(); requestNotifPermission(); setInterval(() => { updateStatusBar(); reviewAlertsOnce(); }, 30 * 60 * 1000);
   }
   function updateAuthUI() {
     var btn = document.getElementById('auth-btn');
@@ -320,11 +320,12 @@
       return;
     }
     bar.innerHTML = statusPills();
+    clearTimeout(updateStatusBar.rv); updateStatusBar.rv = setTimeout(reviewAlertsOnce, 1500);
     return;
   }
   function statusPills() {
     var g = getGuardrails();
-    if (!g.enabled) return focusPills() + e20Pill();
+    if (!g.enabled) return focusPills() + reviewPills() + e20Pill();
     var st = todayStats();
     var kz = g.killzones || {};
     var activeKz = (kz.sessions || []).filter(function(s) { return s.active; });
@@ -352,7 +353,7 @@
 
     var newsAlert = document.getElementById('news-alert-pill');
     if (newsAlert) html += newsAlert.outerHTML;
-    return focusPills() + e20Pill() + html;
+    return focusPills() + reviewPills() + e20Pill() + html;
   }
 
   /* ---------- NEWS ALERTS (10mn before High Impact) ---------- */
@@ -422,13 +423,13 @@
     }
 
     // Browser notification
-    if ('Notification' in window && Notification.permission === 'granted') {
+    if ('Notification' in window && Notification.permission === 'granted') try {
       new Notification('\ud83d\udea8 High Impact News dans ' + mins + 'mn', {
         body: ccy + ' - ' + title,
         icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">\ud83d\udea8</text></svg>',
         tag: 'news-' + ccy + '-' + eventTime
       });
-    }
+    } catch (e) { /* Android : Notification() interdit hors service worker */ }
 
     // Also show a toast in the app
     if (typeof toast === 'function') toast('\ud83d\udea8 ' + ccy + ': ' + title + ' dans ' + mins + 'mn', 8000);
@@ -1062,6 +1063,7 @@
     const months = r.type === 'yearly' ? gt('Par mois', t => t.date.slice(0, 7)) : '';
     $('#main').innerHTML = `
       <h1>Revues</h1>
+      ${reviewBanner()}
       <div class="tabs">${Object.entries(TYPES).map(([k, l]) => `<button data-t="${k}" class="${k === r.type ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="bar"><button class="btn" id="r-prev">←</button><h2 style="margin:0 8px">${esc(periodLabel(r.type, p))}</h2><button class="btn" id="r-next">→</button><span class="muted small">${p.start} → ${p.end}</span></div>
       <div class="kpis">${kpi('Trades', sm.n)}${kpi('Wins / Losses / BE', `${sm.wins} / ${sm.losses} / ${sm.be}`)}${kpi('Win rate', pct(sm.winRate))}${kpi('Net R', sgn(sm.net), cls(sm.net))}${kpi('Gain moy.', sgn(sm.avgWin))}${kpi('Perte moy.', sgn(sm.avgLoss))}${kpi('Profit factor', num(sm.profitFactor))}${kpi('Max drawdown', num(sm.maxDD) + ' R')}${kpi('Plan-follow', pct(sm.planRate))}${kpi('Hors règles', sm.ruleBreaks)}${kpi('FOMO', sm.fomo)}${kpi('A+ pris', ts.filter(t => t._grade === 'A+').length)}</div>
@@ -2428,6 +2430,74 @@
   }
   const V3_LISTS = [['setups', 'Setups'], ['execPoi', 'POI d\'exécution'], ['management', 'Gestion du trade'], ['exitTypes', 'Types de sortie'], ['mistakeTags', 'Tags d\'erreurs']].concat(FILE_NAME === 'journal-backtest.json' ? [] : [['emotions', 'Émotions']]);
 
+
+  /* ================= ALERTES DE REVUE (semaine / mois / trimestre / année) ================= */
+  // Une revue est due pour la période précédente dès le début de la nouvelle période,
+  // si cette période précédente contient au moins un trade. L'alerte reste jusqu'à ce que la revue soit enregistrée.
+  const REV_ORDER = ['weekly', 'monthly', 'quarterly', 'yearly'];
+  const REV_ICON = { weekly: '📝', monthly: '🗓️', quarterly: '📊', yearly: '🏁' };
+  function reviewDone(type, start) {
+    const rv = (DB.reviews || []).find(x => x.id === type + ':' + start || (x.type === type && x.start === start));
+    return !!(rv && Object.values(rv.answers || {}).some(v => v !== '' && v !== null && v !== undefined));
+  }
+  function missingReviews() {
+    if (!DB || !DB.trades || IS_BT) return [];   // backtest : dates historiques, pas d'alerte calendaire
+    const today = todayISO(), out = [];
+    REV_ORDER.forEach(type => {
+      const prev = S.shiftPeriod(type, S.period(type, today).start, -1);
+      const n = DB.trades.filter(t => t.date >= prev.start && t.date <= prev.end).length;
+      if (n && !reviewDone(type, prev.start)) out.push({ type, p: prev, n, label: TYPES[type] + ' : ' + periodLabel(type, prev) });
+    });
+    return out;
+  }
+  function notifySafe(title, body, tag) {
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const opt = { body: body, tag: tag };
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+        navigator.serviceWorker.getRegistration().then(reg => { if (reg) reg.showNotification(title, opt); else { try { new Notification(title, opt); } catch (e) {} } }).catch(() => {});
+      } else new Notification(title, opt);
+    } catch (e) { /* Android sans service worker : la pastille et le toast suffisent */ }
+  }
+  function reviewAlertsOnce() {
+    // une notification + un toast par revue manquante et par jour
+    const miss = missingReviews(); if (!miss.length) return;
+    const key = 'review_alert_v1:' + APP_ID, today = todayISO();
+    let seen = {}; try { seen = JSON.parse(localStorage.getItem(key)) || {}; } catch (e) {}
+    const fresh = miss.filter(m => seen[m.type + ':' + m.p.start] !== today);
+    if (!fresh.length) return;
+    fresh.forEach(m => { seen[m.type + ':' + m.p.start] = today; });
+    try { localStorage.setItem(key, JSON.stringify(seen)); } catch (e) {}
+    const msg = fresh.map(m => m.label).join(' · ');
+    toast('📝 Revue à faire : ' + msg, 9000);
+    notifySafe('📝 Revue à faire', msg, 'review-' + today);
+  }
+  function reviewPills() {
+    return missingReviews().map(m => `<a class="gr-pill gr-pill-review" href="#/reviews" data-rev="${m.type}|${m.p.start}" title="${esc(m.n + ' trade(s) sur la période · clique pour faire la revue')}">${REV_ICON[m.type]} Revue ${esc(m.type === 'weekly' ? 'semaine du ' + m.p.start.slice(8) + '/' + m.p.start.slice(5, 7) : periodLabel(m.type, m.p))} à faire</a>`).join('');
+  }
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('[data-rev]'); if (!a) return;
+    const [type, start] = a.dataset.rev.split('|');
+    ui.rev.type = type; ui.rev.start = start;
+    if (location.hash === '#/reviews') { e.preventDefault(); renderReviews(); }
+  });
+  function btMissingReviews() {
+    const out = {};
+    REV_ORDER.forEach(type => {
+      const starts = [...new Set(DB.trades.map(t => t.date).filter(Boolean).map(d => S.period(type, d).start))].sort();
+      out[type] = starts.filter(st => !reviewDone(type, st));
+    });
+    return out;
+  }
+  function reviewBanner() {
+    if (IS_BT) {
+      const m = btMissingReviews(), tot = REV_ORDER.reduce((s, k) => s + m[k].length, 0);
+      if (!tot) return '';
+      return `<div class="gr-alert gr-warn">📝 Périodes backtestées sans revue : ${REV_ORDER.filter(k => m[k].length).map(k => `${TYPES[k]} (${m[k].length}) : ${m[k].slice(0, 6).map(st => `<a href="#/reviews" data-rev="${k}|${st}">${esc(periodLabel(k, S.period(k, st)))}</a>`).join(', ')}${m[k].length > 6 ? '…' : ''}`).join(' · ')}</div>`;
+    }
+    const miss = missingReviews(); if (!miss.length) return '';
+    return `<div class="gr-alert gr-warn">📝 Revue(s) en retard : ${miss.map(m => `<a href="#/reviews" data-rev="${m.type}|${m.p.start}">${esc(m.label)}</a> (${m.n} trade${m.n > 1 ? 's' : ''})`).join(' · ')}</div>`;
+  }
 
   /* ---------- DONNÉES ---------- */
   function download(name, text, mime) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
