@@ -38,3 +38,11 @@ Aucun serveur, aucun tiers. L'application tourne entièrement dans votre navigat
 ## Checklist figée synchronisée (V13)
 - « 📌 Figer (entrée) » envoie la checklist sur Google Drive (fichier checklist-frozen-<journal>.json, à côté du journal). Le journal la propose ensuite sur n'importe quel appareil connecté au même compte Google.
 - Sous le bouton, la page indique « Envoyée sur Google Drive » ou, sans connexion Google (ex. navigation privée), « Non envoyée » : la checklist reste alors sur l'appareil et part sur Drive à la prochaine ouverture du journal dans ce navigateur.
+
+## V15
+- **Labo** (nouvel onglet) : R laissé sur la table, simulateur de règles de sortie (TP, BE, partiels), simulateur « et si » (règles de discipline rejouées sur l'historique), projection Monte-Carlo.
+- **Analyse** : rang du trade dans la journée, carte heure × jour.
+- **Dashboard → Objectifs de process** : 2 à 4 objectifs hebdomadaires mesurés automatiquement, repris dans les revues.
+- **Données → Sauvegardes et versions** : sauvegarde hebdomadaire automatique sur Drive (8 gardées), restauration d'une sauvegarde ou d'une version Google Drive (une copie de l'état actuel est faite avant).
+- **Hors ligne** : l'appli s'ouvre sans réseau ; les modifications partent sur Drive au retour du réseau.
+- Formulaire, « ＋ Détails » : « MFE atteint avant / après le MAE » pour un simulateur de sortie exact.

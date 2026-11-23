@@ -311,6 +311,17 @@
     });
   }
 
+  /* Sauvegardes : lister par préfixe, supprimer, lire par id, versions du journal */
+  function listByPrefix(prefix) {
+    var q = encodeURIComponent("name contains '" + prefix + "' and trashed=false");
+    return driveReq(DRIVE_API + '/files?q=' + q + '&spaces=drive&orderBy=modifiedTime desc&pageSize=100&fields=files(id,name,modifiedTime,size)').then(jsonOk)
+      .then(function(d) { return (d.files || []).filter(function(f) { return f.name.indexOf(prefix) === 0; }); });
+  }
+  function deleteFile(id) { return driveReq(DRIVE_API + '/files/' + id, { method: 'DELETE' }).then(function(r) { if (!r.ok && r.status !== 404) throw new Error('Suppression impossible (' + r.status + ')'); return true; }); }
+  function readById(id) { return driveReq(DRIVE_API + '/files/' + id + '?alt=media').then(jsonOk); }
+  function listRevisions() { return findFile().then(function(id) { if (!id) return []; return driveReq(DRIVE_API + '/files/' + id + '/revisions?pageSize=200&fields=revisions(id,modifiedTime,size)').then(jsonOk).then(function(d) { return d.revisions || []; }); }); }
+  function readRevision(rid) { return findFile().then(function(id) { return driveReq(DRIVE_API + '/files/' + id + '/revisions/' + rid + '?alt=media').then(jsonOk); }); }
+
   function save(db) {
     // Always keep a local copy first, flagged as "not on Drive yet" until the upload succeeds
     try { localStorage.setItem(DB_CACHE_KEY, JSON.stringify(db)); } catch (e) {}
@@ -343,6 +354,6 @@
 
   root.Drive = {
     init: init, signIn: signIn, signOut: signOut, isSignedIn: isSignedIn,
-    load: load, save: save, peek: peek, readNamed: readNamed, writeNamed: writeNamed, canTry: canTry, getCached: getCached, isDirty: isDirty, takeReturnError: takeReturnError
+    load: load, save: save, peek: peek, readNamed: readNamed, writeNamed: writeNamed, canTry: canTry, listByPrefix: listByPrefix, deleteFile: deleteFile, readById: readById, listRevisions: listRevisions, readRevision: readRevision, getCached: getCached, isDirty: isDirty, takeReturnError: takeReturnError
   };
 })(window);

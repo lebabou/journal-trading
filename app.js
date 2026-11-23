@@ -100,11 +100,11 @@
       DB = { meta: {}, lists: {}, trades: [], reviews: [] };
       banner('Connectez-vous avec Google pour charger vos donn\u00e9es.');
     } catch (e) {
-      banner('Erreur : ' + e.message);
+      banner((!navigator.onLine || /fetch|network|r\u00e9seau/i.test(e.message)) ? '\ud83d\udcf4 Hors ligne : donn\u00e9es de cet appareil. Tes modifications seront envoy\u00e9es sur Drive au retour du r\u00e9seau.' : 'Erreur : ' + e.message);
       DB = Drive.getCached() || EMPTY_JOURNAL;
       mergeDefaults(DB);
     }
-    updateAuthUI(); updateStatusBar(); initNewsAlerts(); requestNotifPermission(); themeSwitcher(); setInterval(() => { updateStatusBar(); reviewAlertsOnce(); }, 30 * 60 * 1000);
+    startupOnce();
   }
   function updateAuthUI() {
     var btn = document.getElementById('auth-btn');
@@ -142,7 +142,7 @@
       if (recoverable) {
         PENDING_SYNC = true;
         updateStatusBar();
-        banner('\u26a0 Non synchronis\u00e9 : ' + m + ' Votre modification est conserv\u00e9e sur cet appareil.');
+        banner(/fetch|network/i.test(m) || !navigator.onLine ? '\ud83d\udcf4 Hors ligne : modification gard\u00e9e sur cet appareil, envoy\u00e9e sur Drive au retour du r\u00e9seau.' : '\u26a0 Non synchronis\u00e9 : ' + m + ' Votre modification est conserv\u00e9e sur cet appareil.');
         return true;    // the edit stands; it will sync on the next successful save
       }
       if (LAST_GOOD) DB = JSON.parse(LAST_GOOD);
@@ -1030,7 +1030,7 @@
         planId: v('planId'), planName: (planById(v('planId')) || {}).name || '',
         overtrade: v('overtrade'), revenge: v('revenge'), guardrailsBroken: grBrokenValue(), improvement: v('improvement'), improvementAt: v('improvement') ? (v('improvement') !== String(t.improvement || '').trim() ? todayISO() : (t.improvementAt || todayISO())) : '',
         planFollow: v('planFollow'), management: v('management'), mistakes: v('mistakes'), entryEmotion: v('entryEmotion'), exitEmotion: v('exitEmotion'), notes: v('notes'), fomo: v('fomo'),
-        goodTrade: v('goodTrade'), execScore: v('execScore') === '' ? null : +v('execScore'), execReview: v('execReview'), bias: v('bias'), poi: v('poi'), killzone: v('killzone'), sweep: v('sweep'), riskRespected: v('riskRespected'), invalidation: v('invalidation'), setup: v('setup'),
+        goodTrade: v('goodTrade'), mfeFirst: v('mfeFirst'), execScore: v('execScore') === '' ? null : +v('execScore'), execReview: v('execReview'), bias: v('bias'), poi: v('poi'), killzone: v('killzone'), sweep: v('sweep'), riskRespected: v('riskRespected'), invalidation: v('invalidation'), setup: v('setup'),
       };
       Object.assign(nt, v3Collect(t, isNew, nt));
       const warns = v4Checks(nt);
@@ -4254,6 +4254,359 @@
   }
   { const _r3 = render; render = function () { try { migrateLists14(); } catch (e) {} _r3(); }; }
 
+  /* ================= V15 : Labo (sorties, « et si », Monte-Carlo), rang & heure, objectifs de process, sauvegardes ================= */
+  const LAB_KEY = 'lab_state_v1';
+  const labState = () => { let s = {}; try { s = JSON.parse(localStorage.getItem(LAB_KEY)) || {}; } catch (e) {} return Object.assign({ sample: 'all', tp: 3, be: '', pAt: '', pPct: 50, maxTrades: '', stopLosses: '', stopDayLoss: '', stopDayGain: '', days: [], hFrom: '', hTo: '', setups: [], mcBase: 'all', mcN: 50, mcSims: 10000 }, s); };
+  const labSave = s => { try { localStorage.setItem(LAB_KEY, JSON.stringify(s)); } catch (e) {} };
+  const chron = ts => ts.slice().sort((a, b) => a.date.localeCompare(b.date) || String(a.entryTime || '').localeCompare(String(b.entryTime || '')) || a.n - b.n);
+  const pipsR = (t, k) => { const s = +t.slPips, v = +t[k]; return s > 0 && isSet(t[k]) && Number.isFinite(v) ? v / s : null; };
+  function seqStats(seq) {
+    let eq = 0, pk = 0, dd = 0, cur = 0, mx = 0;
+    seq.forEach(x => { eq += x; pk = Math.max(pk, eq); dd = Math.min(dd, eq - pk); cur = x < 0 ? cur + 1 : 0; mx = Math.max(mx, cur); });
+    return { n: seq.length, E: seq.length ? eq / seq.length : null, wr: seq.length ? seq.filter(x => x > 0).length / seq.length : null, total: eq, dd, streak: mx };
+  }
+  const nb = n => n < N_MIN ? ` <span class="nb" title="Moins de ${N_MIN} trades : peu fiable">n&lt;${N_MIN}</span>` : '';
+  const ciTxt = a => { const c = meanCI(a); return c[0] === null ? '–' : `[${num(c[0])} ; ${num(c[1])}]`; };
+  const WD = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
+  const wdOf = d => (new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7;   // 0 = lundi
+
+  function labSample(st) {
+    let ts = chron(enriched().filter(takenT).filter(t => S.filled(t.ret)));
+    if (st.sample === '60d') { const lim = addDaysISO(todayISO(), -60); ts = ts.filter(t => t.date >= lim); }
+    if (st.sample === 'last30') ts = ts.slice(-30);
+    return ts;
+  }
+
+  /* ---- 1. sorties ---- */
+  function simTrade(t, rule, mode) {
+    const mfe = pipsR(t, 'mfePips'), mae = pipsR(t, 'maePips'), r = +t.ret, slHit = mae >= 1 - 1e-9;
+    const reach = L => { if (mfe < L - 1e-9) return false; if (!slHit) return true; if (t.mfeFirst === 'Yes') return true; if (t.mfeFirst === 'No') return false; return mode === 'opt'; };
+    const rest = (part) => {
+      if (reach(rule.tp)) return part * rule.tp;
+      if (rule.be && reach(rule.be)) return part * (r > 0 ? Math.min(r, rule.tp) : 0);
+      if (slHit) return -part;
+      return part * Math.min(r, rule.tp);
+    };
+    if (rule.pAt && rule.pAt < rule.tp && reach(rule.pAt)) { const p = rule.pPct / 100; return p * rule.pAt + rest(1 - p); }
+    return rest(1);
+  }
+  const ruleName = r => (r.pAt ? `${r.pPct} % à ${num(r.pAt, 1)}R, ` : '') + (r.be ? `BE à ${num(r.be, 1)}R, ` : '') + `TP ${num(r.tp, 1)}R`;
+  function exitsLeftHTML(ts) {
+    const X = ts.filter(t => pipsR(t, 'mfePips') !== null && pipsR(t, 'maePips') !== null);
+    const head = `<h2>Sorties : R laissé sur la table</h2>`;
+    if (!X.length) return head + `<div class="note">Aucun trade avec SL, MAE et MFE en pips sur cet échantillon : renseigne-les dans « ＋ Détails » du formulaire.</div>`;
+    const mf = X.map(t => pipsR(t, 'mfePips')), rr = X.map(t => +t.ret), cap = mf.reduce((a, b) => a + b, 0) > 0 ? rr.reduce((a, b) => a + b, 0) / mf.reduce((a, b) => a + b, 0) : null;
+    const grp = key => { const m = {}; X.forEach(t => { const k = t[key] || '—'; (m[k] = m[k] || []).push(t); }); return Object.entries(m).sort((a, b) => b[1].length - a[1].length); };
+    const tbl = (key, lab) => `<div class="twrap" style="max-height:none"><table><thead><tr><th>${lab}</th><th class="num">n</th><th class="num">MFE moyen</th><th class="num">R réel moyen</th><th class="num">Capturé</th><th class="num">Laissé / trade</th></tr></thead><tbody>
+      ${grp(key).map(([k, a]) => { const m = meanOf(a.map(t => pipsR(t, 'mfePips'))), r = meanOf(a.map(t => +t.ret)); return `<tr><td>${esc(k)}</td><td class="num">${a.length}</td><td class="num">${num(m)} R</td><td class="num ${cls(r)}">${sgn(r)} R</td><td class="num">${m > 0 ? pct(r / m) : '–'}</td><td class="num">${num(m - r)} R</td></tr>`; }).join('')}</tbody></table></div>`;
+    return head + `<div class="card"><div class="kpis">
+        <div class="kpi"><div class="l">MFE moyen</div><div class="v">${num(meanOf(mf))} R</div><div class="s">mouvement favorable maximal</div></div>
+        <div class="kpi"><div class="l">R réel moyen</div><div class="v ${cls(meanOf(rr))}">${sgn(meanOf(rr))} R</div><div class="s">${X.length} trades${nb(X.length)}</div></div>
+        <div class="kpi"><div class="l">Part capturée</div><div class="v" data-cap="${cap === null ? '' : pct(cap)}">${cap === null ? '–' : pct(cap)}</div><div class="s">Σ R réel / Σ MFE</div></div></div>
+      <h3>Par type de sortie</h3>${tbl('exitType', 'Type de sortie')}<h3>Par setup</h3>${tbl('setup', 'Setup')}
+      <p class="muted small">MFE et MAE convertis en R avec ta taille de SL en pips. Le MFE est mesuré jusqu'où tu l'as noté : s'il inclut le mouvement après ta sortie, la part « laissée » est un maximum théorique, pas un gain atteignable à coup sûr.</p></div>`;
+  }
+  function exitSimHTML(ts, st) {
+    const X = ts.filter(t => pipsR(t, 'mfePips') !== null && pipsR(t, 'maePips') !== null);
+    const head = `<h2>Simulateur de sortie</h2>`;
+    if (X.length < 3) return head + `<div class="note">Il faut au moins 3 trades avec SL, MAE et MFE en pips pour simuler des règles de sortie.</div>`;
+    const real = seqStats(X.map(t => +t.ret));
+    const custom = { tp: +st.tp || 3, be: +st.be || 0, pAt: +st.pAt || 0, pPct: +st.pPct || 50, custom: true };
+    const rules = [{ tp: 1 }, { tp: 1.5 }, { tp: 2 }, { tp: 3 }, { tp: 4 }, { tp: 5 }, { tp: 3, be: 1 }, { tp: 4, pAt: 2, pPct: 50 }, custom];
+    const unknown = X.filter(t => pipsR(t, 'maePips') >= 1 - 1e-9 && !t.mfeFirst && pipsR(t, 'mfePips') > 0).length;
+    const row = r => {
+      const pe = seqStats(X.map(t => simTrade(t, r, 'pess'))), op = seqStats(X.map(t => simTrade(t, r, 'opt')));
+      const rng = Math.abs(op.E - pe.E) > 1e-6;
+      return `<tr${r.custom ? ' class="lab-custom"' : ''}><td>${r.custom ? '✏️ ' : ''}${esc(ruleName(r))}</td><td class="num ${cls(pe.E)}">${sgn(pe.E)}${rng ? `<div class="muted small">à ${sgn(op.E)}</div>` : ''}</td><td class="num">${pct(pe.wr)}</td><td class="num ${cls(pe.total)}">${sgn(pe.total, 1)}${rng ? `<div class="muted small">à ${sgn(op.total, 1)}</div>` : ''}</td><td class="num">${num(pe.dd, 1)}</td><td class="num ${cls(pe.total - real.total)}">${sgn(pe.total - real.total, 1)}</td></tr>`;
+    };
+    return head + `<div class="card">
+      <div class="lab-ctl"><label>TP (R)<input type="number" step="0.5" min="0.5" id="lx-tp" value="${esc(st.tp)}"></label><label>BE à (R)<input type="number" step="0.5" min="0" id="lx-be" value="${esc(st.be)}" placeholder="—"></label><label>Partiel à (R)<input type="number" step="0.5" min="0" id="lx-pat" value="${esc(st.pAt)}" placeholder="—"></label><label>Partiel (%)<input type="number" step="10" min="10" max="90" id="lx-ppct" value="${esc(st.pPct)}"></label></div>
+      <div class="twrap" style="max-height:none"><table><thead><tr><th>Règle (sur ${X.length} trades)</th><th class="num">Espérance</th><th class="num">Win rate</th><th class="num">Total R</th><th class="num">DD max</th><th class="num">Δ vs réel</th></tr></thead><tbody>
+        <tr class="lab-real"><td><b>Ce que tu as fait</b></td><td class="num ${cls(real.E)}">${sgn(real.E)}</td><td class="num">${pct(real.wr)}</td><td class="num ${cls(real.total)}">${sgn(real.total, 1)}</td><td class="num">${num(real.dd, 1)}</td><td class="num">–</td></tr>
+        ${rules.map(row).join('')}</tbody></table></div>
+      <p class="small cc-verdict">${unknown ? `<b>${unknown} trade(s)</b> ont touché le SL sans que l'on sache si le MFE est venu avant : la 1ʳᵉ valeur est pessimiste (SL d'abord), « à … » optimiste. Renseigne « MFE atteint avant / après le MAE » dans « ＋ Détails » pour une simulation exacte.` : 'Ordre MFE / MAE connu pour tous les trades concernés.'}</p>
+      <p class="muted small">Hypothèses : SL touché si MAE ≥ taille du SL ; un niveau est atteint si le MFE le dépasse ; sans TP ni SL touchés, la sortie reste ta sortie réelle (plafonnée au TP) ; après BE, une position non sortie au TP finit à 0 R (ou à ton gain réel s'il était positif). Rejouer le passé ne garantit pas le futur.</p></div>`;
+  }
+
+  /* ---- 2. simulateur « et si » ---- */
+  function applyRules(ts, st) {
+    const kept = [], removed = [], days = {};
+    const hm = t => toMin(t.entryTime), from = toMin(st.hFrom), to = toMin(st.hTo);
+    chron(ts).forEach(t => {
+      const d = days[t.date] = days[t.date] || { n: 0, losses: 0, R: 0 };
+      let why = '';
+      if (st.days.includes(wdOf(t.date))) why = 'jour exclu';
+      else if (st.setups.includes(t.setup || '—')) why = 'setup exclu';
+      else if ((from !== null || to !== null) && hm(t) !== null && ((from !== null && hm(t) < from) || (to !== null && hm(t) > to))) why = 'hors horaires';
+      else if (st.maxTrades && d.n >= +st.maxTrades) why = 'max trades';
+      else if (st.stopLosses && d.losses >= +st.stopLosses) why = 'stop pertes';
+      else if (isSet(st.stopDayLoss) && d.R <= +st.stopDayLoss) why = 'stop perte jour';
+      else if (isSet(st.stopDayGain) && d.R >= +st.stopDayGain) why = 'stop gain jour';
+      if (why) { removed.push(Object.assign({ why }, t)); return; }
+      kept.push(t); d.n++; d.R += +t.ret; if (+t.ret < 0) d.losses++;
+    });
+    return { kept, removed };
+  }
+  function whatIfHTML(ts, st) {
+    const head = `<h2>Simulateur « et si »</h2>`;
+    if (!ts.length) return head + '<div class="note">Aucun trade sur cet échantillon.</div>';
+    const { kept, removed } = applyRules(ts, st);
+    const A = seqStats(ts.map(t => +t.ret)), B = seqStats(kept.map(t => +t.ret)), rr = removed.map(t => +t.ret);
+    const p = rr.length >= 2 && kept.length >= 2 ? welchP(kept.map(t => +t.ret), rr) : null;
+    const setups = [...new Set(ts.map(t => t.setup || '—'))];
+    const why = {}; removed.forEach(t => { why[t.why] = (why[t.why] || 0) + 1; });
+    const line = (l, a, b, f, better) => `<tr><td>${l}</td><td class="num">${f(a)}</td><td class="num ${b !== null && a !== null ? (better(b, a) ? 'pos' : b === a ? '' : 'neg') : ''}">${f(b)}</td></tr>`;
+    let verdict;
+    if (!removed.length) verdict = 'Aucune règle active, ou aucune règle ne retire de trade sur cet échantillon.';
+    else if (rr.length < N_MIN) verdict = `<b>${rr.length} trade(s) retiré(s) seulement</b> : trop peu pour conclure (seuil ${N_MIN}). Espérance des trades retirés ${sgn(meanOf(rr))} R, IC95 % ${ciTxt(rr)}.`;
+    else verdict = p !== null && p < 0.05 ? `<b>Différence significative</b> (p = ${fmtP(p)}) : les trades retirés font ${sgn(meanOf(rr))} R en moyenne contre ${sgn(B.E)} R pour ceux gardés.` : `<b>Pas de différence démontrée</b> (p = ${fmtP(p)}) entre les trades retirés (${sgn(meanOf(rr))} R) et ceux gardés (${sgn(B.E)} R).`;
+    return head + `<div class="card">
+      <div class="lab-ctl">
+        <label>Max trades / jour<select id="lw-max">${['', '1', '2', '3', '4'].map(v => `<option value="${v}"${String(st.maxTrades) === v ? ' selected' : ''}>${v || '—'}</option>`).join('')}</select></label>
+        <label>Stop après N pertes / jour<select id="lw-stl">${['', '1', '2', '3'].map(v => `<option value="${v}"${String(st.stopLosses) === v ? ' selected' : ''}>${v || '—'}</option>`).join('')}</select></label>
+        <label>Stop si jour ≤ (R)<input type="number" step="0.5" id="lw-dl" value="${esc(st.stopDayLoss)}" placeholder="ex. -2"></label>
+        <label>Stop si jour ≥ (R)<input type="number" step="0.5" id="lw-dg" value="${esc(st.stopDayGain)}" placeholder="ex. 3"></label>
+        <label>Entrée après<input type="time" id="lw-hf" value="${esc(st.hFrom)}"></label><label>Entrée avant<input type="time" id="lw-ht" value="${esc(st.hTo)}"></label>
+      </div>
+      <div class="lab-chips"><span class="muted small">Jours exclus :</span>${WD.map((d, i) => `<label class="chip"><input type="checkbox" data-lwd="${i}"${st.days.includes(i) ? ' checked' : ''}>${d}</label>`).join('')}</div>
+      <div class="lab-chips"><span class="muted small">Setups exclus :</span>${setups.map(s => `<label class="chip"><input type="checkbox" data-lws="${esc(s)}"${st.setups.includes(s) ? ' checked' : ''}>${esc(s)}</label>`).join('')}</div>
+      <div class="lab-chips"><button class="btn sm" id="lw-gr">Mes garde-fous</button><button class="btn sm" id="lw-reset">Effacer les règles</button></div>
+      <div class="twrap" style="max-height:none"><table><thead><tr><th></th><th class="num">Réel</th><th class="num">Avec les règles</th></tr></thead><tbody>
+        ${line('Trades', A.n, B.n, v => v, () => false)}${line('Espérance', A.E, B.E, v => v === null ? '–' : sgn(v) + ' R', (b, a) => b > a)}${line('Win rate', A.wr, B.wr, v => pct(v), (b, a) => b > a)}
+        ${line('Total', A.total, B.total, v => sgn(v, 1) + ' R', (b, a) => b > a)}${line('Drawdown max', A.dd, B.dd, v => num(v, 1) + ' R', (b, a) => b > a)}${line('Pire série de pertes', A.streak, B.streak, v => v, (b, a) => b < a)}
+      </tbody></table></div>
+      ${removed.length ? `<p class="small">Retirés : ${Object.entries(why).map(([k, v]) => `${v} × ${k}`).join(', ')} · espérance des retirés ${sgn(meanOf(rr))} R${nb(rr.length)}</p>` : ''}
+      <p class="small cc-verdict">${verdict}</p>
+      <p class="muted small">Les règles sont appliquées dans l'ordre chronologique de chaque journée : un trade est retiré si, au moment de l'entrée, une règle aurait interdit de le prendre. On suppose que les trades suivants restent identiques, ce qui n'est pas certain dans la réalité.</p></div>`;
+  }
+
+  /* ---- 3. Monte-Carlo ---- */
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function monteCarlo(base, N, sims) {
+    const rnd = mulberry32(42), fin = new Float64Array(sims), dds = new Float64Array(sims), stk = new Uint16Array(sims), L = base.length;
+    for (let s = 0; s < sims; s++) { let eq = 0, pk = 0, dd = 0, cur = 0, mx = 0; for (let i = 0; i < N; i++) { const x = base[(rnd() * L) | 0]; eq += x; if (eq > pk) pk = eq; if (eq - pk < dd) dd = eq - pk; cur = x < 0 ? cur + 1 : 0; if (cur > mx) mx = cur; } fin[s] = eq; dds[s] = dd; stk[s] = mx; }
+    const q = (arr, p) => { const a = Array.from(arr).sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(p * a.length))]; };
+    return { fin, dds, stk, q };
+  }
+  function histSVG(vals, lo, hi) {
+    const B = 30, W = 320, H = 110, cnt = new Array(B).fill(0), w = (hi - lo) / B || 1;
+    vals.forEach(v => { const i = Math.max(0, Math.min(B - 1, Math.floor((v - lo) / w))); cnt[i]++; });
+    const mx = Math.max(...cnt), z = lo < 0 && hi > 0 ? 8 + (0 - lo) / (hi - lo) * (W - 16) : null;
+    return `<svg class="scatter" viewBox="0 0 ${W} ${H + 16}" role="img" aria-label="Distribution du résultat final">${cnt.map((c, i) => { const x = 8 + i * (W - 16) / B, h = c / mx * H; return `<rect x="${x.toFixed(1)}" y="${(H - h).toFixed(1)}" width="${((W - 16) / B - 1).toFixed(1)}" height="${h.toFixed(1)}" class="${lo + (i + .5) * w < 0 ? 'sc-l' : 'sc-w'}"/>`; }).join('')}
+      ${z !== null ? `<line x1="${z}" x2="${z}" y1="0" y2="${H}" class="sc-g" stroke-dasharray="3 3"/>` : ''}<text x="8" y="${H + 12}">${num(lo, 0)} R</text><text x="${W - 8}" y="${H + 12}" text-anchor="end">${num(hi, 0)} R</text>${z !== null ? `<text x="${z}" y="${H + 12}" text-anchor="middle">0</text>` : ''}</svg>`;
+  }
+  function monteCarloHTML(ts, st) {
+    const head = `<h2>Monte-Carlo</h2>`;
+    let base = st.mcBase === 'rules' ? applyRules(ts, st).kept : ts;
+    if (st.mcBase === 'last30') base = ts.slice(-30);
+    const R = base.map(t => +t.ret);
+    if (R.length < 10) return head + `<div class="note">Il faut au moins 10 trades dans l'échantillon (actuellement ${R.length}).</div>`;
+    const N = Math.max(5, Math.min(500, +st.mcN || 50)), sims = Math.max(1000, Math.min(20000, +st.mcSims || 10000));
+    const mc = monteCarlo(R, N, sims), g = getGuardrails(), P = f => pct(Array.from(f.arr).filter(f.test).length / sims, 1);
+    const ths = [-5, -10, -15];
+    const lo = mc.q(mc.fin, 0.005), hi = mc.q(mc.fin, 0.995);
+    return head + `<div class="card">
+      <div class="lab-ctl"><label>Base<select id="lm-base"><option value="all"${st.mcBase === 'all' ? ' selected' : ''}>Échantillon choisi (${ts.length})</option><option value="last30"${st.mcBase === 'last30' ? ' selected' : ''}>30 derniers trades</option><option value="rules"${st.mcBase === 'rules' ? ' selected' : ''}>Avec les règles « et si »</option></select></label>
+        <label>Horizon (trades)<input type="number" id="lm-n" min="5" max="500" value="${N}"></label><label>Simulations<select id="lm-s">${[1000, 5000, 10000, 20000].map(v => `<option${v === sims ? ' selected' : ''}>${v}</option>`).join('')}</select></label></div>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Résultat médian</div><div class="v ${cls(mc.q(mc.fin, .5))}">${sgn(mc.q(mc.fin, .5), 1)} R</div><div class="s">90 % des cas entre ${sgn(mc.q(mc.fin, .05), 1)} et ${sgn(mc.q(mc.fin, .95), 1)} R</div></div>
+        <div class="kpi"><div class="l">Probabilité de finir négatif</div><div class="v" data-mc="${P({ arr: mc.fin, test: v => v < 0 })}">${P({ arr: mc.fin, test: v => v < 0 })}</div><div class="s">après ${N} trades</div></div>
+        <div class="kpi"><div class="l">Pire série de pertes</div><div class="v">${mc.q(mc.stk, .5)}</div><div class="s">médiane · 1 cas sur 20 : ≥ ${mc.q(mc.stk, .95)}</div></div></div>
+      <div class="twrap" style="max-height:none"><table><thead><tr><th>Drawdown atteint au moins une fois</th><th class="num">Probabilité</th></tr></thead><tbody>
+        ${ths.map(x => `<tr><td>${x} R</td><td class="num">${P({ arr: mc.dds, test: v => v <= x })}</td></tr>`).join('')}
+        <tr><td>Drawdown médian · 1 cas sur 20</td><td class="num">${num(mc.q(mc.dds, .5), 1)} R · ${num(mc.q(mc.dds, .05), 1)} R</td></tr></tbody></table></div>
+      ${histSVG(mc.fin, lo, hi)}
+      <p class="muted small">${sims} suites de ${N} trades tirées au hasard (avec remise) parmi tes ${R.length} résultats réels (espérance ${sgn(meanOf(R))} R). Hypothèses : trades indépendants et même distribution qu'avant. Si ton edge change, ces chiffres changent. ${R.length < 30 ? `Base de ${R.length} trades : estimation fragile.` : ''}</p></div>`;
+  }
+
+  /* ---- vue Labo ---- */
+  function renderLab() {
+    const st = labState(), ts = labSample(st);
+    $('#main').innerHTML = `<h1>Labo</h1>
+      <div class="bar"><label>Échantillon<select id="lab-sample"><option value="all"${st.sample === 'all' ? ' selected' : ''}>Tous les trades</option><option value="60d"${st.sample === '60d' ? ' selected' : ''}>60 derniers jours</option><option value="last30"${st.sample === 'last30' ? ' selected' : ''}>30 derniers trades</option></select></label><span class="muted small">${ts.length} trade(s) avec résultat</span></div>
+      <div id="lab-exits">${exitsLeftHTML(ts)}</div><div id="lab-sim">${exitSimHTML(ts, st)}</div><div id="lab-whatif">${whatIfHTML(ts, st)}</div><div id="lab-mc">${monteCarloHTML(ts, st)}</div>`;
+    // aplatir les conteneurs pour que les sections soient repliables
+    ['lab-exits', 'lab-sim', 'lab-whatif', 'lab-mc'].forEach(id => { const w = document.getElementById(id); while (w.firstChild) w.parentNode.insertBefore(w.firstChild, w); w.remove(); });
+    labWire();
+  }
+  function labRedo(part) {
+    const st = labState(), ts = labSample(st);
+    const map = { sim: ['Simulateur de sortie', exitSimHTML], whatif: ['Simulateur « et si »', whatIfHTML], mc: ['Monte-Carlo', monteCarloHTML] };
+    const parts = part === 'whatif' ? ['whatif', 'mc'] : [part];
+    parts.forEach(pk => {
+      const [title, fn] = map[pk]; const d = [...document.querySelectorAll('#main details.fold')].find(x => x.querySelector('summary h2') && x.querySelector('summary h2').textContent.startsWith(title));
+      if (!d) return; const tmp = document.createElement('div'); tmp.innerHTML = fn(ts, st);
+      const body = d.querySelector('.fold-b'); body.innerHTML = ''; [...tmp.children].filter(c => c.tagName !== 'H2').forEach(c => body.appendChild(c));
+      try { helpify(body); nBadges(body); } catch (e) {}
+    });
+    labWire();
+  }
+  function labWire() {
+    const st = labState(), set = (k, v, part) => { const s = labState(); s[k] = v; labSave(s); labRedo(part); };
+    const on = (id, k, part) => { const el = document.getElementById(id); if (el) el.onchange = () => set(k, el.value, part); };
+    const sm = document.getElementById('lab-sample'); if (sm) sm.onchange = () => { const s = labState(); s.sample = sm.value; labSave(s); renderLab(); };
+    on('lx-tp', 'tp', 'sim'); on('lx-be', 'be', 'sim'); on('lx-pat', 'pAt', 'sim'); on('lx-ppct', 'pPct', 'sim');
+    on('lw-max', 'maxTrades', 'whatif'); on('lw-stl', 'stopLosses', 'whatif'); on('lw-dl', 'stopDayLoss', 'whatif'); on('lw-dg', 'stopDayGain', 'whatif'); on('lw-hf', 'hFrom', 'whatif'); on('lw-ht', 'hTo', 'whatif');
+    on('lm-base', 'mcBase', 'mc'); on('lm-n', 'mcN', 'mc'); on('lm-s', 'mcSims', 'mc');
+    document.querySelectorAll('[data-lwd]').forEach(c => c.onchange = () => { const s = labState(), i = +c.dataset.lwd; s.days = c.checked ? [...new Set(s.days.concat(i))] : s.days.filter(x => x !== i); labSave(s); labRedo('whatif'); });
+    document.querySelectorAll('[data-lws]').forEach(c => c.onchange = () => { const s = labState(), k = c.dataset.lws; s.setups = c.checked ? [...new Set(s.setups.concat(k))] : s.setups.filter(x => x !== k); labSave(s); labRedo('whatif'); });
+    const gr = document.getElementById('lw-gr'); if (gr) gr.onclick = () => { const g = getGuardrails(), s = labState(); s.maxTrades = String(g.maxTrades || ''); s.stopDayLoss = isSet(g.maxLossR) ? String(g.maxLossR) : ''; s.stopDayGain = isSet(g.dailyTargetR) ? String(g.dailyTargetR) : ''; labSave(s); labRedo('whatif'); };
+    const rs = document.getElementById('lw-reset'); if (rs) rs.onclick = () => { const s = labState(); Object.assign(s, { maxTrades: '', stopLosses: '', stopDayLoss: '', stopDayGain: '', days: [], hFrom: '', hTo: '', setups: [] }); labSave(s); labRedo('whatif'); };
+    void st;
+  }
+  FOLD_CFG.lab = { open: [/^Sorties/], hint: {
+    'Sorties': b => { const v = b.querySelector('[data-cap]'); return v && v.dataset.cap ? 'capturé ' + v.dataset.cap : ''; },
+    'Monte-Carlo': b => { const v = b.querySelector('[data-mc]'); return v ? 'P(négatif) ' + v.dataset.mc : ''; },
+  } };
+
+  /* ---- 4. rang du trade et heure × jour ---- */
+  function rankHourHTML(ts) {
+    const T = chron(ts.filter(takenT).filter(t => S.filled(t.ret))), byDay = {};
+    T.forEach(t => { (byDay[t.date] = byDay[t.date] || []).push(t); });
+    const rk = { 1: [], 2: [], '3+': [] }, aftL = [], aftW = [];
+    Object.values(byDay).forEach(a => a.forEach((t, i) => { rk[i === 0 ? 1 : i === 1 ? 2 : '3+'].push(+t.ret); if (i > 0) (+a[i - 1].ret < 0 ? aftL : +a[i - 1].ret > 0 ? aftW : []).push(+t.ret); }));
+    const row = (l, a) => `<tr><td>${l}</td><td class="num">${a.length}</td><td class="num">${a.length ? pct(a.filter(v => v > 0).length / a.length) : '–'}</td><td class="num ${cls(meanOf(a))}">${a.length ? sgn(meanOf(a)) : '–'}</td><td class="num">${ciTxt(a)}</td><td class="num ${cls(a.reduce((x, y) => x + y, 0))}">${sgn(a.reduce((x, y) => x + y, 0), 1)}</td></tr>`;
+    const pR = rk[1].length >= 2 && rk[2].concat(rk['3+']).length >= 2 ? welchP(rk[1], rk[2].concat(rk['3+'])) : null, pA = aftL.length >= 2 && aftW.length >= 2 ? welchP(aftL, aftW) : null;
+    const th = '<thead><tr><th></th><th class="num">n</th><th class="num">Win rate</th><th class="num">Espérance</th><th class="num">IC95 %</th><th class="num">Total R</th></tr></thead>';
+    let html = `<h2>Rang du trade dans la journée</h2><div class="card"><div class="twrap" style="max-height:none"><table>${th}<tbody>${row('1ᵉʳ trade', rk[1])}${row('2ᵉ trade', rk[2])}${row('3ᵉ et suivants', rk['3+'])}</tbody></table></div>
+      <h3>Trade suivant dans la même journée</h3><div class="twrap" style="max-height:none"><table>${th}<tbody>${row('Après une perte', aftL)}${row('Après un gain', aftW)}</tbody></table></div>
+      <p class="muted small">1ᵉʳ trade vs suivants : p = ${fmtP(pR)} (Welch) · après perte vs après gain : p = ${fmtP(pA)}. Ordre des trades d'une journée selon l'heure d'entrée (ou le numéro si l'heure manque).</p></div>`;
+    const H = T.filter(t => toMin(t.entryTime) !== null && wdOf(t.date) < 5), miss = T.length - H.length;
+    if (!H.length) return html + `<h2>Heure × jour</h2><div class="note">Aucun trade avec heure d'entrée.</div>`;
+    const hours = [...new Set(H.map(t => String(t.entryTime).slice(0, 2)))].sort(), cell = {};
+    H.forEach(t => { const k = String(t.entryTime).slice(0, 2) + '|' + wdOf(t.date); (cell[k] = cell[k] || []).push(+t.ret); });
+    const mxAbs = Math.max(0.5, ...Object.values(cell).map(a => Math.abs(meanOf(a))));
+    const td = a => { if (!a || !a.length) return '<td class="hm-c hm-e">·</td>'; const e = meanOf(a), al = Math.min(1, Math.abs(e) / mxAbs) * Math.min(1, a.length / 5); return `<td class="hm-c" style="--hm:${(al * 0.85 + 0.08).toFixed(2)}" data-s="${e > 0 ? 'p' : e < 0 ? 'n' : 'z'}" title="${a.length} trade(s), espérance ${sgn(e)} R"><b>${sgn(e, 1)}</b><span>${a.length}</span></td>`; };
+    const colA = i => H.filter(t => wdOf(t.date) === i).map(t => +t.ret), rowA = h => H.filter(t => String(t.entryTime).slice(0, 2) === h).map(t => +t.ret);
+    html += `<h2>Heure × jour</h2><div class="card"><div class="twrap" style="max-height:none"><table class="hm"><thead><tr><th>Heure</th>${WD.map(d => `<th class="num">${d}</th>`).join('')}<th class="num">Toutes</th></tr></thead><tbody>
+      ${hours.map(h => `<tr><th>${h} h</th>${WD.map((d, i) => td(cell[h + '|' + i])).join('')}${td(rowA(h))}</tr>`).join('')}
+      <tr><th>Tous</th>${WD.map((d, i) => td(colA(i))).join('')}${td(H.map(t => +t.ret))}</tr></tbody></table></div>
+      <div class="twrap" style="max-height:none;margin-top:10px"><table><thead><tr><th>Jour</th><th class="num">n</th><th class="num">Win rate</th><th class="num">Espérance</th><th class="num">IC95 %</th><th class="num">Total R</th></tr></thead><tbody>${WD.map((d, i) => row(d, T.filter(t => wdOf(t.date) === i).map(t => +t.ret))).join('')}</tbody></table></div>
+      <p class="muted small">Chaque case : espérance en R (gros) et nombre de trades (petit). La couleur pâlit quand la case compte moins de 5 trades. ${miss ? `${miss} trade(s) sans heure d'entrée exclus de la carte (mais comptés par jour).` : ''} Avec de petites cases, un écart peut être dû au hasard : regarde l'IC95 % du tableau par jour.</p></div>`;
+    return html;
+  }
+  FOLD_CFG.analysis.hint['Rang du trade'] = b => { const r = b.querySelectorAll('tbody tr')[0]; return r ? '1ᵉʳ trade ' + r.children[3].textContent + ' R' : ''; };
+  { const _ra2 = renderAnalysis; renderAnalysis = function () { _ra2(); try { const ts = DB.trades.filter(takenT).filter(t => S.filled(t.ret)); const at = [...$('#main').children].find(c => c.tagName === 'H2' && /^Par catégorie/.test(c.textContent)); const h = rankHourHTML(ts); if (at) at.insertAdjacentHTML('beforebegin', h); else $('#main').insertAdjacentHTML('beforeend', h); } catch (e) { console.error(e); } }; }
+
+  /* ---- 5. objectifs de process ---- */
+  const GOAL_DEF = [
+    ['snap', 'Checklist figée jointe aux trades', 'trades', ts => ts.length ? ts.filter(hasSnap).length / ts.length : null],
+    ['snapRate', 'Remplissage moyen de la checklist', 'trades avec checklist', ts => { const a = ts.filter(hasSnap).map(t => snapRate(t.checklistSnap)); return a.length ? meanOf(a) : null; }],
+    ['pm', 'Routine post-market faite', 'jours tradés', (ts) => { const d = [...new Set(ts.map(t => t.date))]; return d.length ? d.filter(pmDone).length / d.length : null; }],
+    ['fiche', 'Fiche complète (moyenne)', 'trades', ts => ts.length ? meanOf(ts.map(t => completeness(t).pct)) / 100 : null],
+    ['good', 'Trades classés bon / mauvais', 'trades', ts => ts.length ? ts.filter(t => yesNo(t.goodTrade)).length / ts.length : null],
+    ['plan', 'Plan respecté', 'trades', ts => { const a = ts.filter(t => isSet(t.planFollow)); return a.length ? a.filter(t => t.planFollow === 'Yes').length / a.length : null; }],
+    ['maxT', 'Jours dans la limite de trades', 'jours tradés', ts => { const c = {}; ts.forEach(t => { c[t.date] = (c[t.date] || 0) + 1; }); const d = Object.values(c); return d.length ? d.filter(n => n <= (getGuardrails().maxTrades || 99)).length / d.length : null; }],
+  ];
+  const goalDef = k => GOAL_DEF.find(g => g[0] === k);
+  const goals = () => (Array.isArray(DB.processGoals) ? DB.processGoals : []).filter(g => goalDef(g.metric));
+  function goalEval(g, p) {
+    const ts = DB.trades.filter(takenT).filter(t => t.date >= p.start && t.date <= p.end), v = goalDef(g.metric)[3](ts);
+    return { v, n: ts.length, ok: v === null ? null : v * 100 >= +g.target - 1e-9 };
+  }
+  function goalsTableHTML(p, title) {
+    const G = goals(); if (!G.length) return '';
+    return `<div class="twrap" style="max-height:none"><table><thead><tr><th>${title || 'Objectif'}</th><th class="num">Cible</th><th class="num">Réalisé</th><th>Statut</th></tr></thead><tbody>${G.map(g => { const e = goalEval(g, p), d = goalDef(g.metric);
+      return `<tr><td>${esc(d[1])}</td><td class="num">≥ ${g.target} %</td><td class="num">${e.v === null ? '–' : pct(e.v)}</td><td>${e.v === null ? '<span class="muted">pas de données</span>' : e.ok ? '<span class="rh-ok">✓ atteint</span>' : '<span class="rh-todo">✗ pas atteint</span>'}</td></tr>`; }).join('')}</tbody></table></div>`;
+  }
+  function goalsDashHTML() {
+    const G = goals(), wk = S.period('weekly', todayISO());
+    const head = `<h2>Objectifs de process</h2>`;
+    if (!G.length) return head + `<div class="card"><p class="small">Fixe 2 ou 3 objectifs de process (checklist figée, post-market, fiche complète…). Ils sont mesurés automatiquement chaque semaine et repris dans la revue hebdo.</p><button class="btn primary" id="goals-edit">Choisir mes objectifs</button></div>`;
+    const weeks = []; let p = wk; for (let i = 0; i < 6; i++) { weeks.unshift(p); p = S.shiftPeriod('weekly', p.start, -1); }
+    const ok = G.filter(g => goalEval(g, wk).ok).length;
+    return head + `<div class="card" data-goals="${ok}/${G.length}"><p class="small"><b>Cette semaine</b> (${esc(periodLabel('weekly', wk))}) : ${ok}/${G.length} objectif(s) atteint(s) pour l'instant.</p>${goalsTableHTML(wk)}
+      <div class="twrap" style="max-height:none;margin-top:10px"><table class="goal-hist"><thead><tr><th>6 dernières semaines</th>${weeks.map(w => `<th class="num">${esc(w.start.slice(8))}/${esc(w.start.slice(5, 7))}</th>`).join('')}</tr></thead><tbody>
+        ${G.map(g => `<tr><td>${esc(goalDef(g.metric)[1])}</td>${weeks.map(w => { const e = goalEval(g, w); return `<td class="num" title="${e.v === null ? 'pas de données' : pct(e.v)}">${e.v === null ? '<span class="muted">–</span>' : e.ok ? '<span class="rh-ok">✓</span>' : '<span class="rh-todo">✗</span>'}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
+      <button class="btn sm" id="goals-edit" style="margin-top:10px">Modifier mes objectifs</button></div>`;
+  }
+  function editGoals() {
+    let G = goals().map(g => Object.assign({}, g)); if (!G.length) G = [{ metric: 'snap', target: 90 }, { metric: 'pm', target: 80 }];
+    const draw = () => {
+      showModal(`<div class="mhead"><h1>Objectifs de process</h1></div><p class="muted small">2 à 4 objectifs, mesurés du lundi au dimanche. La cible est un pourcentage.</p>
+        <div id="gl-rows">${G.map((g, i) => `<div class="gl-row"><select data-gm="${i}">${GOAL_DEF.map(d => `<option value="${d[0]}"${d[0] === g.metric ? ' selected' : ''}>${esc(d[1])}</option>`).join('')}</select><label class="gl-t">≥<input type="number" min="1" max="100" step="5" data-gt="${i}" value="${esc(g.target)}"> %</label><button class="btn sm" data-gd="${i}" title="Retirer">✕</button></div>`).join('')}</div>
+        ${G.length < 4 ? '<button class="btn sm" id="gl-add">＋ Ajouter un objectif</button>' : ''}
+        <div class="actions"><button class="btn" id="gl-cancel">Annuler</button><button class="btn primary" id="gl-save">Enregistrer</button></div>`);
+      const sync = () => { document.querySelectorAll('[data-gm]').forEach(s => { G[+s.dataset.gm].metric = s.value; }); document.querySelectorAll('[data-gt]').forEach(s => { G[+s.dataset.gt].target = Math.max(1, Math.min(100, +s.value || 0)); }); };
+      document.querySelectorAll('[data-gd]').forEach(b => b.onclick = () => { sync(); G.splice(+b.dataset.gd, 1); draw(); });
+      const ad = $('#gl-add'); if (ad) ad.onclick = () => { sync(); const used = G.map(g => g.metric); G.push({ metric: (GOAL_DEF.find(d => !used.includes(d[0])) || GOAL_DEF[0])[0], target: 80 }); draw(); };
+      $('#gl-cancel').onclick = closeModal;
+      $('#gl-save').onclick = async () => { sync(); const seen = new Set(); DB.processGoals = G.filter(g => !seen.has(g.metric) && seen.add(g.metric)); if (await save('Objectifs enregistrés')) { closeModal(); render(); } };
+    };
+    draw();
+  }
+  document.addEventListener('click', e => { if (e.target && e.target.id === 'goals-edit') { e.preventDefault(); editGoals(); } });
+  FOLD_CFG.dashboard.hint['Objectifs de process'] = b => { const c = b.querySelector('[data-goals]'); return c ? c.dataset.goals + ' cette semaine' : 'à définir'; };
+  FOLD_CFG.dashboard.open.push(/^Objectifs de process/);
+  { const _rd3 = renderDashboard; renderDashboard = function () { _rd3(); try { const at = [...$('#main').children].find(c => c.tagName === 'H2' && /^Score de consistance/.test(c.textContent)); const h = goalsDashHTML(); if (at) at.insertAdjacentHTML('beforebegin', h); else $('#main').insertAdjacentHTML('beforeend', h); } catch (e) { console.error(e); } }; }
+  { const _rr3 = renderReviews; renderReviews = function () { _rr3(); try { if (!goals().length) return; const r = ui.rev, p = S.period(r.type, r.start); const at = [...$('#main').children].find(c => c.tagName === 'H2' && /^Réflexion/.test(c.textContent)); const h = `<h2>Objectifs de process de la période</h2><div class="card">${goalsTableHTML(p)}</div>`; if (at) at.insertAdjacentHTML('beforebegin', h); else $('#main').insertAdjacentHTML('beforeend', h); } catch (e) { console.error(e); } }; }
+
+  /* ---- 6. sauvegardes et versions ---- */
+  const BK_PREFIX = FILE_NAME.replace(/\.json$/, '') + '-sauvegarde-', BK_KEEP = 8;
+  let _bkChecked = false;
+  async function autoBackup(force) {
+    if (!Drive.listByPrefix || !Drive.isSignedIn() || !DB || !DB.trades) return null;
+    const list = await Drive.listByPrefix(BK_PREFIX);
+    const last = list[0], age = last ? (Date.now() - Date.parse(last.modifiedTime)) / 864e5 : Infinity;
+    if (!force && age < 7) return null;
+    const name = BK_PREFIX + todayISO() + (force ? '-' + new Date().toTimeString().slice(0, 5).replace(':', 'h') : '') + '.json';
+    await Drive.writeNamed(name, DB);
+    const all = await Drive.listByPrefix(BK_PREFIX);
+    for (const f of all.slice(BK_KEEP)) await Drive.deleteFile(f.id).catch(() => {});
+    return name;
+  }
+  { const _r4 = render; render = function () { _r4(); if (!_bkChecked && DB && Drive.isSignedIn && Drive.isSignedIn()) { _bkChecked = true; setTimeout(() => autoBackup(false).then(n => { if (n) toast('Sauvegarde hebdomadaire créée sur Drive ☁'); }).catch(() => { _bkChecked = false; }), 4000); } }; }
+  const bkSummary = db => { const ts = (db && db.trades) || []; const last = ts.map(t => t.date).sort().pop(); return `${ts.length} trades${last ? ', dernier le ' + last.split('-').reverse().join('/') : ''}`; };
+  function backupsHTML() {
+    return `<h2>Sauvegardes et versions</h2><div class="card" id="bk-card"><p class="small">Une sauvegarde complète est créée automatiquement sur Google Drive une fois par semaine (${BK_KEEP} dernières gardées). Google Drive garde aussi les versions précédentes du journal pendant environ 30 jours.</p>
+      <div class="lab-chips"><button class="btn" id="bk-list">Afficher les sauvegardes et versions</button><button class="btn" id="bk-now">Créer une sauvegarde maintenant</button></div><div id="bk-out"></div></div>`;
+  }
+  async function bkRestore(label, getDb) {
+    const out = $('#bk-out'); out.insertAdjacentHTML('afterbegin', '<p class="muted small" id="bk-wait">Lecture…</p>');
+    let db; try { db = await getDb(); } catch (e) { $('#bk-wait').textContent = 'Lecture impossible : ' + e.message; return; }
+    $('#bk-wait') && $('#bk-wait').remove();
+    if (!db || !Array.isArray(db.trades)) { toast('Ce fichier ne contient pas de journal valide'); return; }
+    if (!confirm(`Restaurer « ${label} » ?\n\nCette version : ${bkSummary(db)}.\nActuel : ${bkSummary(DB)}.\n\nUne sauvegarde de l'état actuel est créée d'abord.`)) return;
+    try { await Drive.writeNamed(BK_PREFIX + 'avant-restauration-' + todayISO() + '-' + Date.now().toString(36) + '.json', DB); } catch (e) { if (!confirm('La sauvegarde de sécurité a échoué (' + e.message + '). Restaurer quand même ?')) return; }
+    DB = db; mergeDefaults(DB);
+    if (await save('Version restaurée ✓')) render();
+  }
+  async function bkList() {
+    const out = $('#bk-out'); out.innerHTML = '<p class="muted small">Chargement…</p>';
+    try {
+      const [files, revs] = await Promise.all([Drive.listByPrefix(BK_PREFIX), Drive.listRevisions()]);
+      const fdt = s => new Date(s).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      out.innerHTML = `<h3>Sauvegardes</h3>${files.length ? `<div class="twrap" style="max-height:none"><table><thead><tr><th>Fichier</th><th>Date</th><th></th></tr></thead><tbody>${files.map(f => `<tr><td class="small">${esc(f.name.replace(BK_PREFIX, ''))}</td><td>${fdt(f.modifiedTime)}</td><td><button class="btn sm" data-bkf="${esc(f.id)}" data-bkl="${esc(f.name)}">Restaurer</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted small">Aucune sauvegarde pour l\'instant.</p>'}
+        <h3>Versions Google Drive du journal</h3>${revs.length ? `<div class="twrap" style="max-height:none"><table><thead><tr><th>Date</th><th class="num">Taille</th><th></th></tr></thead><tbody>${revs.slice().reverse().slice(0, 40).map((r, i) => `<tr><td>${fdt(r.modifiedTime)}${i === 0 ? ' <span class="muted small">(actuelle)</span>' : ''}</td><td class="num">${r.size ? Math.round(r.size / 1024) + ' Ko' : '–'}</td><td>${i === 0 ? '' : `<button class="btn sm" data-bkr="${esc(r.id)}" data-bkl="version du ${esc(fdt(r.modifiedTime))}">Restaurer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted small">Aucune version disponible.</p>'}`;
+      out.querySelectorAll('[data-bkf]').forEach(b => b.onclick = () => bkRestore(b.dataset.bkl, () => Drive.readById(b.dataset.bkf)));
+      out.querySelectorAll('[data-bkr]').forEach(b => b.onclick = () => bkRestore(b.dataset.bkl, () => Drive.readRevision(b.dataset.bkr)));
+    } catch (e) { out.innerHTML = `<p class="small neg">Impossible de lire Google Drive : ${esc(e.message)}. Vérifie ta connexion Google.</p>`; }
+  }
+  { const _rdat = renderData; renderData = function () { _rdat(); try { $('#main').insertAdjacentHTML('beforeend', backupsHTML()); $('#bk-list').onclick = bkList; $('#bk-now').onclick = async () => { try { const n = await autoBackup(true); toast('Sauvegarde créée ☁'); if ($('#bk-out').innerHTML) bkList(); void n; } catch (e) { toast('Sauvegarde impossible : ' + e.message); } }; } catch (e) { console.error(e); } }; }
+
+  /* ---- 7. hors ligne ---- */
+  window.addEventListener('online', () => { if (Drive.isDirty && Drive.isDirty()) { PENDING_SYNC = true; retrySync(); } else banner(''); });
+  window.addEventListener('offline', () => { banner('📴 Hors ligne : tu peux continuer à utiliser le journal. Tes modifications restent sur cet appareil et seront envoyées sur Drive au retour du réseau.'); });
+
+  /* ---- question MFE avant / après MAE dans le formulaire ---- */
+  { const _et5 = editTrade; editTrade = function (n) {
+      _et5(n);
+      try {
+        const t = n === null || n === undefined ? {} : (DB.trades.find(x => x.n === n) || {}), mf = document.getElementById('f-mfePips'), box = mf && mf.closest('label');
+        if (!box || document.getElementById('f-mfeFirst')) return;
+        box.insertAdjacentHTML('afterend', `<label>MFE atteint…<select id="f-mfeFirst"><option value="">—</option><option value="Yes"${t.mfeFirst === 'Yes' ? ' selected' : ''}>avant le MAE</option><option value="No"${t.mfeFirst === 'No' ? ' selected' : ''}>après le MAE</option></select></label>`);
+      } catch (e) {}
+    }; }
+
+  /* démarrage (alertes news, service worker, rafraîchissement) : une seule fois, quel que soit le chemin de chargement */
+  var _startupDone = false;
+  function startupOnce() {
+    if (_startupDone || !DB) return; _startupDone = true;
+    try { updateAuthUI(); updateStatusBar(); initNewsAlerts(); requestNotifPermission(); themeSwitcher(); } catch (e) { console.error(e); }
+    setInterval(() => { updateStatusBar(); reviewAlertsOnce(); }, 30 * 60 * 1000);
+  }
+  { const _r5 = render; render = function () { _r5(); if (!_startupDone && DB) setTimeout(startupOnce, 0); }; }
+
   /* ---------- DONNÉES ---------- */
   function download(name, text, mime) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
   function toCSV() {
@@ -4297,9 +4650,9 @@
     hideNews(); hideTrading(); updateStatusBar();
     $('#dbname').textContent = (DB && DB.meta && DB.meta.name) || 'Journal de trading';
     document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.v === view));
-    ({ dashboard: renderDashboard, journal: renderJournal, reviews: renderReviews, guardrails: renderGuardrails, news: renderNews, plan: renderTradingPlan, calc: renderCalculator, trading: renderTrading, notebook: renderNotebook, analysis: renderAnalysis, setups: renderSetups, sanctuary: renderSanctuary, bvl: renderBvL, data: renderData, session: renderSession }[view] || renderDashboard)();
+    ({ dashboard: renderDashboard, journal: renderJournal, reviews: renderReviews, guardrails: renderGuardrails, news: renderNews, plan: renderTradingPlan, calc: renderCalculator, trading: renderTrading, notebook: renderNotebook, analysis: renderAnalysis, setups: renderSetups, sanctuary: renderSanctuary, bvl: renderBvL, data: renderData, session: renderSession, lab: renderLab }[view] || renderDashboard)();
   }
-  function route() { const v = (location.hash.match(/^#\/(\w+)/) || [])[1]; view = ['dashboard', 'journal', 'reviews', 'guardrails', 'news', 'trading', 'plan', 'notebook', 'calc', 'analysis', 'setups', 'sanctuary', 'bvl', 'data', 'session'].includes(v) ? v : 'dashboard'; render(); }
+  function route() { const v = (location.hash.match(/^#\/(\w+)/) || [])[1]; view = ['dashboard', 'journal', 'reviews', 'guardrails', 'news', 'trading', 'plan', 'notebook', 'calc', 'analysis', 'setups', 'sanctuary', 'bvl', 'data', 'session', 'lab'].includes(v) ? v : 'dashboard'; render(); }
   window.addEventListener('hashchange', route);
   document.addEventListener('keydown', e => {
     if (LB) { if (e.key === 'Escape') closeLightbox(); else if (e.key === 'ArrowLeft' && LB.items.length > 1) step(-1); else if (e.key === 'ArrowRight' && LB.items.length > 1) step(1); return; }
