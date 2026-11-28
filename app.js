@@ -1047,7 +1047,7 @@
 
   /* ---------- REVUES (weekly / monthly / quarterly / yearly) ---------- */
   const QUESTIONS = {
-    weekly: [['q1', 'Qu\'est-ce qui a bien marché cette semaine, et pourquoi ?'], ['q2', 'Quelles erreurs ou points faibles, et quel plan de prévention ?'], ['q3', 'Quel schéma voyez-vous dans vos meilleurs et pires trades ?'], ['q4', 'Quel est votre unique priorité pour la semaine prochaine ?'], ['best', 'Meilleur trade (pourquoi il était bon)'], ['worst', 'Pire trade (cause)'], ['missed', 'Setups valides manqués', 'number'], ['missedLinks', 'Captures TradingView des setups manqués', 'links']],
+    weekly: [['overview', 'Capture du Weekly overview', 'links'], ['q1', 'Qu\'est-ce qui a bien marché cette semaine, et pourquoi ?'], ['q2', 'Quelles erreurs ou points faibles, et quel plan de prévention ?'], ['q3', 'Quel schéma voyez-vous dans vos meilleurs et pires trades ?'], ['q4', 'Quel est votre unique priorité pour la semaine prochaine ?'], ['best', 'Meilleur trade (pourquoi il était bon)'], ['worst', 'Pire trade (cause)'], ['missed', 'Setups valides manqués', 'number'], ['missedLinks', 'Captures TradingView des setups manqués', 'links']],
     monthly: [['q1', 'Quelle est la leçon n°1 du mois ?'], ['q2', 'Quelle barrière mentale est revenue le plus, et quel plan pour la corriger ?'], ['q3', 'De quoi êtes-vous le plus fier (process ou résultat) ?'], ['q4', 'Priorité unique pour le mois prochain ?'], ['best', 'Meilleur jour (qu\'avez-vous bien fait ?)'], ['worst', 'Pire jour (qu\'est-ce qui a mal tourné ?)']],
     quarterly: [['q1', 'Plus grand progrès d\'exécution ce trimestre'], ['q2', 'Plus grand progrès de discipline ce trimestre'], ['q3', 'Schéma d\'erreur à éliminer le trimestre prochain'], ['q4', 'Quelle a été votre plus grande avancée ?'], ['q5', 'Où avez-vous le plus dérapé, et quelle correction ?'], ['q6', 'Moment le plus dur et ce qu\'il vous a appris'], ['q7', 'Si vous ne maîtrisez qu\'UNE chose le trimestre prochain, laquelle ?'], ['best', 'Meilleur setup (nom + pourquoi)'], ['worst', 'Pire setup (nom + pourquoi)'], ['mistakes', '1–2 erreurs qui ont coûté le plus (en R)']],
     yearly: [['q1', 'Leçons les plus puissantes de l\'année'], ['q2', 'Habitudes, système ou changements mentaux qui ont le plus contribué à votre progression'], ['q3', 'Revers ou schémas répétés, et ce que vous changerez'], ['q4', 'Moment de trading dont vous êtes le plus fier'], ['q5', 'Partie de la stratégie à développer ou affiner'], ['q6', 'Qu\'est-ce qui ferait de l\'an prochain votre meilleure année ?'], ['best', 'Meilleur mois (pourquoi ça a marché)'], ['worst', 'Mois le plus difficile (ce qui a lâché)'], ['mistakes', 'Schéma d\'erreur le plus coûteux']],
@@ -2715,15 +2715,21 @@
     list = (list || []).filter(x => x && (x.url || typeof x === 'string'));
     if (!list.length) return '';
     return `<div class="ml-view">${list.map(x => { const u = typeof x === 'string' ? x : x.url, img = S.imageUrl ? S.imageUrl(u) : null;
-      return `<a class="ml-item" href="${esc(u)}" target="_blank" rel="noopener">${img ? `<img src="${esc(img)}" alt="Setup manqué" loading="lazy">` : '<span class="ml-ph">📈</span>'}<span>${esc(x.note || trunc(u.replace(/^https?:\/\/(www\.)?/, ''), 38))}</span></a>`; }).join('')}</div>`;
+      return `<a class="ml-item" href="${esc(u)}" target="_blank" rel="noopener">${img ? `<img src="${esc(img)}" alt="Capture TradingView" loading="lazy">` : '<span class="ml-ph">📈</span>'}<span>${esc(x.note || trunc(u.replace(/^https?:\/\/(www\.)?/, ''), 38))}</span></a>`; }).join('')}</div>`;
   }
+  const LINK_TXT = {
+    missedLinks: { note: 'Note (paire, jour, pourquoi manqué)', hint: 'Colle le lien de la capture TradingView (bouton 📷 → « Copier le lien »). Un lien par setup manqué.' },
+    overview: { note: 'Note (paire, biais de la semaine…)', hint: 'Colle le lien de ta capture du Weekly overview (TradingView, bouton 📷 → « Copier le lien »). Un lien par paire si tu en suis plusieurs.' },
+  };
+  const linkTxt = k => LINK_TXT[k] || { note: 'Note', hint: 'Colle le lien TradingView (bouton 📷 → « Copier le lien »).' };
   function linksField(k, label, list) {
     list = (list && list.length ? list : [{ url: '', note: '' }]);
-    const row = (x, i) => `<div class="ml-row"><input class="ml-url" type="url" inputmode="url" placeholder="https://www.tradingview.com/x/…" value="${esc(x.url || '')}" aria-label="Lien ${i + 1}"><input class="ml-note" placeholder="Note (paire, jour, pourquoi manqué)" value="${esc(x.note || '')}" aria-label="Note ${i + 1}"><button type="button" class="btn sm ml-del" aria-label="Supprimer">×</button></div>`;
+    const tx = linkTxt(k);
+    const row = (x, i) => `<div class="ml-row"><input class="ml-url" type="url" inputmode="url" placeholder="https://www.tradingview.com/x/…" value="${esc(x.url || '')}" aria-label="Lien ${i + 1}"><input class="ml-note" placeholder="${esc(tx.note)}" value="${esc(x.note || '')}" aria-label="Note ${i + 1}"><button type="button" class="btn sm ml-del" aria-label="Supprimer">×</button></div>`;
     return `<div class="qa" id="q-${k}"><label>${esc(label)}</label><div class="ml-rows">${list.map(row).join('')}</div>
-      <button type="button" class="btn sm" id="ml-add">+ Ajouter un lien</button>
+      <button type="button" class="btn sm ml-add">+ Ajouter un lien</button>
       <div class="ml-prev">${linksView(list.filter(x => x.url))}</div>
-      <p class="muted small">Colle le lien de la capture TradingView (bouton 📷 → « Copier le lien »). Un lien par setup manqué.</p></div>`;
+      <p class="muted small">${esc(tx.hint)}</p></div>`;
   }
   function linksCollect(k) {
     const box = document.getElementById('q-' + k); if (!box) return [];
@@ -2732,10 +2738,10 @@
   function linksWire(k) {
     const box = document.getElementById('q-' + k); if (!box) return;
     const rows = box.querySelector('.ml-rows');
-    const refresh = () => { box.querySelector('.ml-prev').innerHTML = linksView(linksCollect(k)); const n = linksCollect(k).length, m = document.getElementById('q-missed'); if (m && n && (+m.value || 0) < n) m.value = n; };
+    const refresh = () => { box.querySelector('.ml-prev').innerHTML = linksView(linksCollect(k)); if (k !== 'missedLinks') return; const n = linksCollect(k).length, m = document.getElementById('q-missed'); if (m && n && (+m.value || 0) < n) m.value = n; };
     const wireRow = r => { r.querySelector('.ml-del').onclick = () => { if (rows.children.length > 1) r.remove(); else { r.querySelector('.ml-url').value = ''; r.querySelector('.ml-note').value = ''; } refresh(); }; r.querySelector('.ml-url').onchange = refresh; r.querySelector('.ml-note').onchange = refresh; };
     rows.querySelectorAll('.ml-row').forEach(wireRow);
-    box.querySelector('#ml-add').onclick = () => { const tmp = document.createElement('div'); tmp.innerHTML = `<div class="ml-row"><input class="ml-url" type="url" inputmode="url" placeholder="https://www.tradingview.com/x/…"><input class="ml-note" placeholder="Note (paire, jour, pourquoi manqué)"><button type="button" class="btn sm ml-del" aria-label="Supprimer">×</button></div>`; const r = tmp.firstChild; rows.appendChild(r); wireRow(r); r.querySelector('.ml-url').focus(); };
+    box.querySelector('.ml-add').onclick = () => { const tmp = document.createElement('div'); tmp.innerHTML = `<div class="ml-row"><input class="ml-url" type="url" inputmode="url" placeholder="https://www.tradingview.com/x/…"><input class="ml-note" placeholder="${esc(linkTxt(k).note)}"><button type="button" class="btn sm ml-del" aria-label="Supprimer">×</button></div>`; const r = tmp.firstChild; rows.appendChild(r); wireRow(r); r.querySelector('.ml-url').focus(); };
   }
 
   /* ================= CALENDRIER ÉCONOMIQUE ================= */
